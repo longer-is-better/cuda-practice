@@ -7,6 +7,7 @@ FetchContent_Declare(
     GIT_TAG release-1.11.0
 )
 
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 add_subdirectory(test_operators)
 # add_subdirectory(networks)

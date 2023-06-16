@@ -53,6 +53,31 @@ class AlexNet(nn.Module):
 
 ## diary
 
+
+[ RUN      ] general/test_relu_float_1d_input.check_output_vs_cpu/2
+0 th, host_output: 0.340188, fetch_output 0
+/home/dongwei/Workspace/cuda-practice/v1/tests/test_operators/test_relu.cu:101: Failure
+Expected equality of these values:
+  host_output[i]
+    Which is: 0.34018773
+  fetch_output[i]
+    Which is: 0
+0 th, host_output: 0.34018772840499878, fetch_output 0
+
+1 th, host_output: 0, fetch_output 0
+2 th, host_output: 0.283099, fetch_output 0.283099
+3 th, host_output: 0.29844, fetch_output 0.29844
+4 th, host_output: 0.411647, fetch_output 0.411647
+5 th, host_output: 0, fetch_output 0
+6 th, host_output: 0, fetch_output 0
+7 th, host_output: 0.26823, fetch_output 0.26823
+8 th, host_output: 0, fetch_output 0
+9 th, host_output: 0.05397, fetch_output 0.05397
+10 th, host_output: 0, fetch_output 0
+11 th, host_output: 0.128871, fetch_output 0.128871
+
+第 0 个元素值始终为 0
+
 ### v1
 
 将所有算子实现为 __global\_\_ 从主机顺序调用
@@ -66,7 +91,7 @@ class AlexNet(nn.Module):
 ![DynamicParallelism](cuda-playground/multifile/DynamicParallelism.png "DynamicParallelism")
 
 ```
-# --relocatable-device-code {true|false}          (-rdc)                      
+# --relocatable-device-code {true|false}          (-rdc)                    
 #         Enable (disable) the generation of relocatable device code.  If disabled,
 #         executable device code is generated.  Relocatable device code must be linked
 #         before it can be executed.
