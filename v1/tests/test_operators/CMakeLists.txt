@@ -1,34 +1,14 @@
-
-
-# # 将下载下来的googletest编译成库 使用IMPORTED关键字
-# add_library(GTest::GTest INTERFACE IMPORTED)
-# # 链接gtest
-# target_link_libraries(GTest::GTest INTERFACE gtest_main)
-
-
-# # 将我们写的tests编译成可执行文件
-# add_executable(test_relu test_relu.cu)
-
-# # 把GTest和被测函数都链接到 可执行文件 上
-# target_link_libraries(test_relu
-#  PRIVATE
-#   GTest::GTest
-#   relu)
-
-# # 增加测试
-# add_test(gtest_operators test_relu)
-
-
-
-# enable_testing()
-
-add_executable(test_relu test_relu.cu)
-include_directories(${PROJECT_SOURCE_DIR}/../Common)
+file(GLOB test_op_files ${CMAKE_CURRENT_SOURCE_DIR}/test_*.cu)
+add_executable(test_operators ${test_op_files})
+include_directories(${PROJECT_SOURCE_DIR}/Common)
 target_link_libraries(
-  test_relu
+  test_operators
   relu
+  conv2d
+  cudnn
+  utils
   GTest::gtest_main
 )
 
 include(GoogleTest)
-gtest_discover_tests(test_relu)
+gtest_discover_tests(test_operators)
