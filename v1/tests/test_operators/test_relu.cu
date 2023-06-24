@@ -101,8 +101,8 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(test_relu_float_1d_input, check_output_vs_cpu){
     checkCudaErrors(cudaMemcpy(device_input, input.data(), len * sizeof(float), cudaMemcpyHostToDevice));
-    relu_forward<<<grid, block>>>(device_input, device_output, len, 1, 1);
-    // relu_forward<float><<<grid, block>>>(device_input, device_output, len, 1, 1);
+    // relu_forward<<<grid, block>>>(device_input, device_output, len, 1, 1);
+    relu_forward<float><<<grid, block>>>(device_input, device_output, len, 1, 1);
     checkCudaErrors(cudaMemcpy(fetch_output.data(), device_output, len * sizeof(float), cudaMemcpyDeviceToHost));
 
     for (int i = 0; i < len; i++) {

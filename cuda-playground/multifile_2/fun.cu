@@ -1,7 +1,7 @@
 #include<stdio.h>
 #include"fun.cuh"
 
-__global__ void fun (float* in, float* out) {
+__global__ void fun () {
     // Block index
     int bx = blockIdx.x;
     int by = blockIdx.y;

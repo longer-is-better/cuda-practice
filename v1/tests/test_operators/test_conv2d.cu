@@ -288,48 +288,64 @@ TEST(convforward, cudnn_test) {
 }
 
 
-// __constant__ float kernel_const[64*1024/sizeof(float)];
+__constant__ float kernel_const[64*1024/sizeof(float)];
 TEST(test_conv2d, smoke){
-    TensorDesc input_desc("nchw", {1, 2, 7, 7});
-    int input_len = 1; for (int n = 0; n < input_desc.dim_n; n++) input_len *= input_desc.shape[n];
-    float* input_data = nullptr;
+    sleep(5);
+    TensorDesc *input_desc = nullptr;
+    checkCudaErrors(cudaMallocManaged((void**)&input_desc, sizeof(TensorDesc)));
+    input_desc->init("nchw", {1, 2, 7, 7});
+
+    float *input_data = nullptr;
+    int input_len = 1; for (int n = 0; n < *input_desc->dim_n; n++) input_len *= input_desc->shape[n];
     checkCudaErrors(cudaMallocManaged((void**)&input_data, input_len * sizeof(float)));
-    for (int n = 0; n < input_desc.shape[0]; n++) {
-        for (int c = 0; c < input_desc.shape[1]; c++) {
-            for (int h = 0; h < input_desc.shape[2]; h++) {
-                for (int w = 0; w < input_desc.shape[3]; w++) {
-                    input_data[n * input_desc.shape[1] * input_desc.shape[2] * input_desc.shape[3] + c * input_desc.shape[2] * input_desc.shape[3] + h  * input_desc.shape[3] + w] = n + c + h + w;
+    for (int n = 0; n < input_desc->shape[0]; n++) {
+        for (int c = 0; c < input_desc->shape[1]; c++) {
+            for (int h = 0; h < input_desc->shape[2]; h++) {
+                for (int w = 0; w < input_desc->shape[3]; w++) {
+                    input_data[n * input_desc->shape[1] * input_desc->shape[2] * input_desc->shape[3] + c * input_desc->shape[2] * input_desc->shape[3] + h  * input_desc->shape[3] + w] = n + c + h + w;
                 }
             }
         }
     }
+    PrintTensor(input_data, input_desc->shape, 4, "input_data");
+
+
+    TensorDesc *kernel_desc = nullptr;
+    checkCudaErrors(cudaMallocManaged((void**)&kernel_desc, sizeof(TensorDesc)));
+    kernel_desc->init("nchw", {1, 2, 2, 2});
 
     std::vector<float> kernel_vec{1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0};
-    TensorDesc kernel_desc("nchw", {1, 2, 2, 2});
-    int kernel_len = 1; for (int n = 0; n < kernel_desc.dim_n; n++) kernel_len *= kernel_desc.shape[n];
     float* kernel_data = nullptr;
-    checkCudaErrors(cudaMalloc((void**)&kernel_data, kernel_len * sizeof(float)));
-    checkCudaErrors(cudaMemcpy(kernel_data, kernel_vec.data(), kernel_len * sizeof(float), cudaMemcpyHostToDevice));
-    // checkCudaErrors(cudaMemcpyToSymbol(kernel_const, kernel_vec.data(), kernel_len * sizeof(float)));
+    int kernel_len = 1; for (int n = 0; n < *kernel_desc->dim_n; n++) kernel_len *= kernel_desc->shape[n];
+    checkCudaErrors(cudaMallocManaged((void**)&kernel_data, kernel_len * sizeof(float)));
+    checkCudaErrors(cudaMemcpyToSymbol(kernel_const, kernel_vec.data(), kernel_len * sizeof(float)));
 
 
-    Conv2dDesc conv_desc = {.stride = 1, .padding = 0};
+    Conv2dDesc *conv_desc = nullptr;
+    checkCudaErrors(cudaMallocManaged((void**)&conv_desc, sizeof(Conv2dDesc)));
+    conv_desc->padding = 0;
+    conv_desc->stride = 1;
 
-    TensorDesc output_desc(std::move(conv2d_forward_shape_infer(input_desc, kernel_desc, conv_desc)));
+
+
+
+    TensorDesc *output_desc = nullptr;
+    checkCudaErrors(cudaMallocManaged((void**)&output_desc, sizeof(TensorDesc)));
+    ASSERT_TRUE(conv2d_forward_shape_infer(input_desc, kernel_desc, conv_desc, output_desc));
     float* output_data = nullptr;
-    int output_len = 1; for (int n = 0; n < output_desc.dim_n; n++) input_len *= output_desc.shape[n];
+    int output_len = 1; for (int n = 0; n < *output_desc->dim_n; n++) input_len *= output_desc->shape[n];
     checkCudaErrors(cudaMallocManaged((void**)&output_data, output_len * sizeof(float)));
 
 
     dim3 grid(1, 1, 2), block(1, 1, 3);
     size_t sharedmem_size =\
-        input_desc.shape[0] *\
-        input_desc.shape[1] *\
-        (conv_desc.stride * block.y + kernel_desc.shape[2] - 2 * conv_desc.padding - 1) *\
-        (conv_desc.stride * block.z + kernel_desc.shape[3] - 2 * conv_desc.padding - 1);
+        input_desc->shape[0] *\
+        input_desc->shape[1] *\
+        (conv_desc->stride * block.y + kernel_desc->shape[2] - 2 * conv_desc->padding - 1) *\
+        (conv_desc->stride * block.z + kernel_desc->shape[3] - 2 * conv_desc->padding - 1);
 
-    // conv2d_forward_memopt<<<grid, block, sharedmem_size * sizeof(float)>>>(input_data, input_desc, kernel_const, kernel_desc, conv_desc, output_data, output_desc);
+    conv2d_forward_memopt<<<grid, block, sharedmem_size * sizeof(float)>>>(input_data, input_desc, kernel_const, kernel_desc, conv_desc, output_data, output_desc);
     // conv2d_forward_memopt<<<grid, block, sharedmem_size * sizeof(float)>>>(input_data, input_desc, kernel_data, kernel_desc, conv_desc, output_data, output_desc);
-    step<<<grid, block, sharedmem_size * sizeof(float)>>>(input_data, input_desc);
+    // step<<<grid, block, sharedmem_size * sizeof(float)>>>(input_data, input_desc);
     checkCudaErrors(cudaDeviceSynchronize());
 }

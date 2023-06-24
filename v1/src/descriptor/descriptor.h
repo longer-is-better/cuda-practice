@@ -5,7 +5,7 @@
 
 
 struct TensorDesc {
-    int dim_n = 0;
+    int* dim_n = 0;
     char* layout = nullptr;
     int* shape = nullptr;
     TensorDesc(const std::string& layout, const std::vector<int>& shape);
@@ -16,6 +16,8 @@ struct TensorDesc {
     TensorDesc& operator = (TensorDesc&& tensordesc);
 
     ~TensorDesc();
+
+    void init(const std::string& layout, const std::vector<int>& shape);
 };
 
 
