@@ -1,5 +1,6 @@
 #pragma once
 
+// __global__ void relu_forward(float* in, float* out, int insize_x, int insize_y, int insize_z);
 template <typename T>
 __global__ void relu_forward(T* in, T* out, int insize_x, int insize_y, int insize_z) {
     for (int x = blockDim.x * blockIdx.x + threadIdx.x; x < insize_x; x += gridDim.x * blockDim.x) {
