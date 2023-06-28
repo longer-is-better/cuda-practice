@@ -8,6 +8,8 @@ struct TensorDesc {
     int* dim_n = 0;
     char* layout = nullptr;
     int* shape = nullptr;
+    int* stride = nullptr;
+    TensorDesc(){};
     TensorDesc(const std::string& layout, const std::vector<int>& shape);
     TensorDesc(const TensorDesc& td) = delete;
     TensorDesc(TensorDesc&& td);
@@ -18,6 +20,9 @@ struct TensorDesc {
     ~TensorDesc();
 
     void init(const std::string& layout, const std::vector<int>& shape);
+
+    void* operator new(std::size_t size);
+    void operator delete(void *ptr);
 };
 
 

@@ -5,7 +5,7 @@
 #include<cuda_runtime.h>
 #include"helper_cuda.h"
 #include"descriptor.h"
-#include"log_err.h"
+#include"log.h"
 
 
 TensorDesc::TensorDesc(const std::string& layout, const std::vector<int>& shape) {
@@ -19,11 +19,17 @@ TensorDesc::TensorDesc(const std::string& layout, const std::vector<int>& shape)
 
     checkCudaErrors(cudaMallocManaged((void**)&this->shape, shape.size() * sizeof(int)));
     memcpy(this->shape, shape.data(), shape.size() * sizeof(int));
+
+    checkCudaErrors(cudaMallocManaged((void**)&this->stride, shape.size() * sizeof(int)));
+    this->stride[shape.size() - 1] = 1;
+    for (int i = shape.size() - 1; i > 0; i--) this->stride[i - 1] = this->stride[i] * this->shape[i];
 }
 
 TensorDesc::~TensorDesc(){
-    free(layout);
+    cudaFree(dim_n);
+    cudaFree(layout);
     cudaFree(shape);
+    cudaFree(stride);
 }
 
 void TensorDesc::init(const std::string& layout, const std::vector<int>& shape) {
@@ -37,10 +43,21 @@ void TensorDesc::init(const std::string& layout, const std::vector<int>& shape) 
 
     checkCudaErrors(cudaMallocManaged((void**)&this->shape, shape.size() * sizeof(int)));
     memcpy(this->shape, shape.data(), shape.size() * sizeof(int));
+
+    checkCudaErrors(cudaMallocManaged((void**)&this->stride, shape.size() * sizeof(int)));
+    this->stride[shape.size() - 1] = 1;
+    for (int i = shape.size() - 1; i > 0; i--) this->stride[i - 1] = this->stride[i] * this->shape[i];
 }
 
+void* TensorDesc::operator new(std::size_t size) {
+    void* ptr = nullptr;
+    checkCudaErrors(cudaMallocManaged(&ptr, size));
+    return ptr;
+}
 
-
+void TensorDesc::operator delete(void* ptr) {
+    checkCudaErrors(cudaFree(ptr));
+}
 
 TensorDesc::TensorDesc(TensorDesc&& rvalue){
     std::cout << "move TensorDesc, yes!" << std::endl;
@@ -48,6 +65,7 @@ TensorDesc::TensorDesc(TensorDesc&& rvalue){
     rvalue.dim_n = 0;
     this->layout = rvalue.layout; rvalue.layout = nullptr;
     this->shape = rvalue.shape; rvalue.shape = nullptr;
+    this->stride = rvalue.stride; rvalue.stride = nullptr;
 }
 
 TensorDesc& TensorDesc::operator=(TensorDesc&& rvalue){
@@ -55,5 +73,6 @@ TensorDesc& TensorDesc::operator=(TensorDesc&& rvalue){
     this->dim_n = rvalue.dim_n; rvalue.dim_n = 0;
     this->layout = rvalue.layout; rvalue.layout = nullptr;
     this->shape = rvalue.shape; rvalue.shape = nullptr;
+    this->stride = rvalue.stride; rvalue.stride = nullptr;
     return *this;
 };
