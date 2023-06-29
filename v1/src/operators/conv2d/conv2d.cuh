@@ -44,7 +44,8 @@ __global__ void conv2d_forward_naive(
                         for(int kernel_h = 0; kernel_h < desc_kernel->shape[2]; kernel_h++) {
                             for(int kernel_w = 0; kernel_w < desc_kernel->shape[3]; kernel_w++) {
                                 int in_indx = n * desc_in->stride[0] + in_c * desc_in->stride[1] + (top_left_h + kernel_h) * desc_in->stride[2] + (top_left_w + kernel_w) * desc_in->stride[3];
-                                int kernel_idx = c * desc_kernel->stride[0] + in_c * desc_kernel->stride[1] + kernel_h * desc_kernel->stride[2] + kernel_w * desc_kernel->stride[3];
+                                // int kernel_idx = c * desc_kernel->stride[0] + in_c * desc_kernel->stride[1] + kernel_h * desc_kernel->stride[2] + kernel_w * desc_kernel->stride[3];
+                                int kernel_idx = c * desc_kernel->stride[0] + in_c * desc_kernel->stride[1] + (desc_kernel->shape[2] - kernel_h - 1) * desc_kernel->stride[2] + (desc_kernel->shape[3] - kernel_w - 1) * desc_kernel->stride[3];
                                 float in_val = 0;
                                 if ((top_left_h + kernel_h >= 0) && (top_left_h + kernel_h < desc_in->shape[2]) && (top_left_w + kernel_w >= 0) && (top_left_w + kernel_w < desc_in->shape[3])) in_val = in[in_indx];
                                 ans += in_val * kernel[kernel_idx];
@@ -65,16 +66,6 @@ TensorDesc* conv2d_forward_shape_infer(
     const TensorDesc* kernel,
     const Conv2dDesc* conv
 ){
-    // TensorDesc* ans = new TensorDesc(
-    //     "nchw",
-    //     {
-    //         in.shape[0],
-    //         kernel.shape[0],
-    //         (in.shape[2] + 2 * conv.padding - kernel.shape[2]) / conv.stride,
-    //         (in.shape[3] + 2 * conv.padding - kernel.shape[3]) / conv.stride
-    //     }
-    // );
-    // return *ans;
     if (!in || !kernel || !conv) {
         return nullptr;
     } else {

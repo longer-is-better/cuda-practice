@@ -273,9 +273,9 @@ class test_conv2d_float:
     dim3 grid, block;
 
 
-    R(cudnnHandle_t handle_;
-    cudnnConvolutionFwdAlgo_t algo;
-    cudnnTensorFormat_t filterFormat;)
+    R(cudnnHandle_t handle_;)
+    R(cudnnConvolutionFwdAlgo_t algo;)
+    R(cudnnTensorFormat_t filterFormat;)
 
     TensorDesc *input_desc = nullptr;
     R(cudnnTensorDescriptor_t cudnnIdesc;)
@@ -364,7 +364,7 @@ test_conv2d_float::test_conv2d_float(){
     outputDimA[1] = kernel_shape[0];
     outputDimA[2] = getFwdConvOutputDim(in_shape[2], convPadA[0], kernel_shape[2], convStrideA[0], convDilationA[0]);
     outputDimA[3] = getFwdConvOutputDim(in_shape[3], convPadA[1], kernel_shape[3], convStrideA[1], convDilationA[1]);
-    generateStrides(outputDimA, outinputStrideA, 4, CUDNN_TENSOR_NCHW);
+    R(generateStrides(outputDimA, outinputStrideA, 4, CUDNN_TENSOR_NCHW));
     R(checkCudnnErr(cudnnSetTensorNdDescriptor(cudnnOdesc, CUDNN_DATA_FLOAT, 4, outputDimA, outinputStrideA));))
     
     checkCudaErrors(cudaMallocManaged((void**)&output, output_desc->shape[0] * output_desc->shape[1] * output_desc->shape[2] * output_desc->shape[3] * sizeof(float)));
@@ -397,50 +397,143 @@ INSTANTIATE_TEST_SUITE_P(
     general,
     test_conv2d_float,
     testing::Values(
+        // ----------------------------------- padding ------------------------------------------------
         std::make_tuple(
-            std::vector<int>{1, 3, 5, 5},
+            std::vector<int>{1, 1, 3, 3},
             [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-            std::vector<int>{2, 3, 3, 3},
-            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 2;},
+            std::vector<int>{1, 1, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 5;},
             0, 1,
             dim3(1),
             dim3(1)
         ),
         std::make_tuple(
-            std::vector<int>{1, 1, 5, 5},
+            std::vector<int>{1, 3, 5, 5},
             [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-            std::vector<int>{1, 1, 2, 2},
-            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 2;},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 5;},
+            0, 1,
+            dim3(1),
+            dim3(1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
             1, 1,
             dim3(1),
             dim3(1)
         ),
         std::make_tuple(
-            std::vector<int>{1, 1, 5, 5},
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 1,
+            dim3(1),
+            dim3(1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            3, 1,
+            dim3(1),
+            dim3(1)
+        ),
+        // -------------------------------- stride --------------------------------------------------
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 1,
+            dim3(1),
+            dim3(1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 2,
+            dim3(1),
+            dim3(1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 3,
+            dim3(1),
+            dim3(1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 4,
+            dim3(1),
+            dim3(1)
+        ),
+        // ----------------------------------- grid block -------------------------------------------------------
+        std::make_tuple(
+            std::vector<int>{1, 3, 8, 8},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{1, 3, 2, 2},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            3, 2,
+            dim3(2, 2, 2),
+            dim3(2, 2, 2)
+        ),
+        std::make_tuple(
+            std::vector<int>{3, 1, 244, 244},
             [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
             std::vector<int>{1, 1, 3, 3},
-            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 2;},
-            0, 2,
-            dim3(1),
-            dim3(1)
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            3, 2,
+            dim3(1, 4, 4),
+            dim3(1, 4, 4)
+        ),
+        std::make_tuple(  // cudnn wrong?
+            std::vector<int>{1, 4, 2, 2},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{4, 4, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 1,
+            dim3(1, 1, 1),
+            dim3(1, 1, 1)
         ),
         std::make_tuple(
-            std::vector<int>{1, 3, 5, 5},
+            std::vector<int>{1, 4, 2, 2},
             [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-            std::vector<int>{2, 3, 3, 3},
-            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 2;},
-            3, 3,
-            dim3(1),
-            dim3(1)
+            std::vector<int>{4, 4, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 1,
+            dim3(1, 1, 1),
+            dim3(1, 1, 1)
         ),
         std::make_tuple(
-            std::vector<int>{1, 3, 5, 5},
+            std::vector<int>{3, 4, 7, 7},
             [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-            std::vector<int>{2, 3, 3, 3},
-            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 2;},
-            0, 1,
-            dim3(2),
-            dim3(2)
+            std::vector<int>{4, 4, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            3, 2,
+            dim3(2, 4, 4),
+            dim3(2, 4, 4)
+        ),
+        std::make_tuple(
+            std::vector<int>{3, 4, 32, 32},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{6, 4, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            3, 2,
+            dim3(2, 4, 4),
+            dim3(2, 4, 4)
         )
     )
 );
@@ -470,7 +563,7 @@ TEST_P(test_conv2d_float, check_output_vs_cudnn){
         )
     );)
     R(checkCudaErrors(cudaDeviceSynchronize());)
-    // R(PrintTensor(cudnn_output, outputDimA, 4, "cudnn_output");)
+    R(PrintTensor(cudnn_output, outputDimA, 4, "cudnn_output");)
 
     // size_t sharedmem_size =\
     //     input_desc->shape[0] *\
@@ -488,7 +581,7 @@ TEST_P(test_conv2d_float, check_output_vs_cudnn){
         output_desc
     );
     checkCudaErrors(cudaDeviceSynchronize());
-    // PrintTensor(output, output_desc->shape, *output_desc->dim_n, "output");
+    PrintTensor(output, output_desc->shape, *output_desc->dim_n, "output");
 
     size_t len = 1;
     for (int i = 0; i < 4; i++) {
