@@ -7,6 +7,7 @@ build
 *.a
 *.so
 *.out
+*.pt
 log
 *.log
 # And all the file types you're interested in.

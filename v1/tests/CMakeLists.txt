@@ -1,5 +1,10 @@
 include(FetchContent)
 
+# Avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP in CMake 3.24:
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+cmake_policy(SET CMP0135 NEW)
+endif()
+
 # 将Googletest下载到本地的build当中，作为本地项目的一部分。所有googletest的目标都将可见。
 FetchContent_Declare(
   googletest
@@ -11,5 +16,4 @@ FetchContent_MakeAvailable(googletest)
 
 add_subdirectory(test_operators)
 add_subdirectory(test_utils)
-# add_subdirectory(networks)
-# add_subdirectory(test_operators_copy)
+add_subdirectory(test_networks)

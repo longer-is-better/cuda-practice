@@ -1,30 +1,27 @@
 #pragma once
-
 #include"print_tensor.h"
 #include"descriptor.h"
 
 
-template <typename T>
-__global__ void conv2d_forward_naive(
-    T* in, TensorDesc desc_in,
-    T* kernel, TensorDesc desc_kernel,
-    T* out, TensorDesc desc_out,
-    const Conv2dDesc& desc_conv
+TensorDesc* conv2d_forward_shape_infer(
+    const TensorDesc* in,
+    const TensorDesc* kernel,
+    const Conv2dDesc* conv
 ){
-    // for (int n = 0; n < desc_out.shape[0]; n++) {
-    //     for (int x = blockDim.x * blockIdx.x + threadIdx.x; x < desc_out.shape[1]; x += gridDim.x * blockDim.x) {
-    //         for (int y = blockDim.y * blockIdx.y + threadIdx.y; y < desc_out.shape[2]; y += gridDim.y * blockDim.y) {
-    //             for (int z = blockDim.z * blockIdx.z + threadIdx.z; z < desc_out.shape[3]; z += gridDim.z * blockDim.z) {
-    //                 int ans_c = blockDim.x * blockIdx.x + threadIdx.x;
-    //                 int ans_h = blockDim.y * blockIdx.y + threadIdx.y;
-    //                 int ans_w = blockDim.z * blockIdx.z + threadIdx.z;
-    //                 out[idx] = (in[idx] > static_cast<T>(0)) ? in[idx] : static_cast<T>(0);
-    //             }
-    //         }
-    //     }
-    // }
+    if (!in || !kernel || !conv) {
+        return nullptr;
+    } else {
+        return new TensorDesc(
+            "nchw",
+            {
+                in->shape[0],
+                kernel->shape[0],
+                (in->shape[2] + 2 * conv->padding - kernel->shape[2]) / conv->stride + 1,
+                (in->shape[3] + 2 * conv->padding - kernel->shape[3]) / conv->stride + 1
+            }
+        );
+    }
 }
-
 
 // __constant__ T kernel_const[64*1024/sizeof(T)];
 // extern __shared__ float block_in[];
@@ -60,23 +57,3 @@ __global__ void conv2d_forward_naive(
     }
 }
 
-
-TensorDesc* conv2d_forward_shape_infer(
-    const TensorDesc* in,
-    const TensorDesc* kernel,
-    const Conv2dDesc* conv
-){
-    if (!in || !kernel || !conv) {
-        return nullptr;
-    } else {
-        return new TensorDesc(
-            "nchw",
-            {
-                in->shape[0],
-                kernel->shape[0],
-                (in->shape[2] + 2 * conv->padding - kernel->shape[2]) / conv->stride + 1,
-                (in->shape[3] + 2 * conv->padding - kernel->shape[3]) / conv->stride + 1
-            }
-        );
-    }
-}

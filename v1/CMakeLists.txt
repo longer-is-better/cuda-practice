@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(cuda-practice_v1 LANGUAGES CXX CUDA)
 set(CMAKE_CUDA_FLAGS_DEBUG "-g -G")
-# set(CMAKE_CUDA_COMPILER nvcc)
 enable_testing()
 add_subdirectory(src)
 add_subdirectory(tests)
+add_subdirectory(3rd_party)

@@ -30,3 +30,24 @@ struct Conv2dDesc {
     int stride;
     int padding;
 };
+
+
+struct Pool2dDesc {
+    int* dim_n = nullptr;
+    int* window_shape = nullptr;
+    int* stride = nullptr;
+    int* padding = nullptr;
+
+    Pool2dDesc() = delete;
+    Pool2dDesc(Pool2dDesc&& pd) = delete;
+    Pool2dDesc(const Pool2dDesc& pd) = delete;
+    Pool2dDesc& operator = (const Pool2dDesc& Pool2dDesc) = delete;
+
+    Pool2dDesc(const std::vector<int>& window_shape, const std::vector<int>& padding, const std::vector<int>& stride);
+    Pool2dDesc& operator = (Pool2dDesc&& Pool2dDesc);
+
+    ~Pool2dDesc();
+
+    void* operator new(std::size_t size);
+    void operator delete(void *ptr);
+};

@@ -12,19 +12,19 @@
 // }
 
 int main(){
-    // float* I = nullptr;
-    // checkCudaErrors(cudaMallocManaged((void**)&I, 4));
-    // cudnnHandle_t _h;
-    // cudnnCreate(&_h);
-    // cudnnDestroy(_h);
+    float* I = nullptr;
+    checkCudaErrors(cudaMallocManaged((void**)&I, 4));
+    cudnnHandle_t _h;
+    cudnnCreate(&_h);
+    cudnnDestroy(_h);
 
-    // float num = 234.f;
+    float num = 234.f;
 
-    // I[0] = 123.0f;
-    // // memcpy(I, &num, 4);
+    I[0] = 123.0f;
+    // memcpy(I, &num, 4);
 
-    // test<<<1, 1>>>(I);
-    // checkCudaErrors(cudaDeviceSynchronize());
+    test<<<1, 1>>>(I);
+    checkCudaErrors(cudaDeviceSynchronize());
 
 
 #ifdef __CUDACC_DEBUG__

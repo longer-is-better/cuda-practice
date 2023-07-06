@@ -26,10 +26,10 @@ TensorDesc::TensorDesc(const std::string& layout, const std::vector<int>& shape)
 }
 
 TensorDesc::~TensorDesc(){
-    cudaFree(dim_n);
-    cudaFree(layout);
-    cudaFree(shape);
-    cudaFree(stride);
+    checkCudaErrors(cudaFree(dim_n));
+    checkCudaErrors(cudaFree(layout));
+    checkCudaErrors(cudaFree(shape));
+    checkCudaErrors(cudaFree(stride));
 }
 
 void TensorDesc::init(const std::string& layout, const std::vector<int>& shape) {
@@ -76,3 +76,46 @@ TensorDesc& TensorDesc::operator=(TensorDesc&& rvalue){
     this->stride = rvalue.stride; rvalue.stride = nullptr;
     return *this;
 };
+
+Pool2dDesc::Pool2dDesc(const std::vector<int>& window_shape, const std::vector<int>& padding, const std::vector<int>& stride) {
+    if (window_shape.size() != stride.size()) LOGERR("window_shape.size() != stride.size()");
+    
+    checkCudaErrors(cudaMallocManaged((void**)&this->dim_n, sizeof(int)));
+    *dim_n = window_shape.size();
+
+    checkCudaErrors(cudaMallocManaged((void**)&this->window_shape, window_shape.size() * sizeof(int)));
+    memcpy(this->window_shape, window_shape.data(), window_shape.size() *  sizeof(int));
+
+    checkCudaErrors(cudaMallocManaged((void**)&this->stride, stride.size() * sizeof(int)));
+    memcpy(this->stride, stride.data(), stride.size() *  sizeof(int));
+
+    checkCudaErrors(cudaMallocManaged((void**)&this->padding, padding.size() * sizeof(int)));
+    memcpy(this->padding, padding.data(), padding.size() *  sizeof(int));
+}
+
+Pool2dDesc& Pool2dDesc::operator=(Pool2dDesc&& rv) {
+    this->dim_n = rv.dim_n; rv.dim_n = 0;
+
+    this->window_shape = rv.window_shape; rv.window_shape = nullptr;
+    this->stride = rv.stride; rv.stride = nullptr;
+    this->padding = rv.padding; rv.padding = nullptr;
+
+    return *this;
+}
+
+Pool2dDesc::~Pool2dDesc() {
+    checkCudaErrors(cudaFree(dim_n));
+    checkCudaErrors(cudaFree(window_shape));
+    checkCudaErrors(cudaFree(stride));
+    checkCudaErrors(cudaFree(padding));
+}
+
+void* Pool2dDesc::operator new(std::size_t size) {
+    void* ptr = nullptr;
+    checkCudaErrors(cudaMallocManaged(&ptr, size));
+    return ptr;
+}
+
+void Pool2dDesc::operator delete(void* ptr) {
+    checkCudaErrors(cudaFree(ptr));
+}

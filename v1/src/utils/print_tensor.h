@@ -3,8 +3,8 @@
 #include<string>
 
 
-int NC_MAX = 3;
-int HW_MAX = 32;
+static int NC_MAX = 2;
+static int HW_MAX = 16;
 
 template<typename T>
 void PrintVector(const T* ptr, int num) {

@@ -53,7 +53,6 @@ class AlexNet(nn.Module):
 
 ## diary
 
-
 [ RUN      ] general/test_relu_float_1d_input.check_output_vs_cpu/2
 0 th, host_output: 0.340188, fetch_output 0
 /home/dongwei/Workspace/cuda-practice/v1/tests/test_operators/test_relu.cu:101: Failure
@@ -91,7 +90,7 @@ Expected equality of these values:
 ![DynamicParallelism](cuda-playground/multifile/DynamicParallelism.png "DynamicParallelism")
 
 ```
-# --relocatable-device-code {true|false}          (-rdc)                    
+# --relocatable-device-code {true|false}          (-rdc)                  
 #         Enable (disable) the generation of relocatable device code.  If disabled,
 #         executable device code is generated.  Relocatable device code must be linked
 #         before it can be executed.

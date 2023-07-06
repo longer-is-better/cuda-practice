@@ -13,15 +13,6 @@
 #include"log.h"
 #include"cudnn_error.cuh"
 
-// Generate uniform numbers [0,1)
-static void
-initImage(float* image, int imageSize) {
-    static unsigned seed = 123456789;
-    for (int index = 0; index < imageSize; index++) {
-        seed         = (1103515245 * seed + 12345) & 0xffffffff;
-        image[index] = float(seed) * 2.3283064e-10;  // 2^-32
-    }
-}
 
 static void
 generateStrides(const int* dimA, int* strideA, int nbDims, cudnnTensorFormat_t filterFormat) {
@@ -92,7 +83,7 @@ TEST(cudnnConvolutionForward, smoke) {
             }
         }
     }
-    PrintTensor(hostInput.data(), inputDimA, 4, "hostInput");
+    // PrintTensor(hostInput.data(), inputDimA, 4, "hostInput");
     float* deviceInput;
     checkCudaErrors(cudaMalloc((void**)&deviceInput, inputNum * sizeof(float)));
     checkCudaErrors(cudaMemcpy(deviceInput, hostInput.data(), inputNum * sizeof(float), cudaMemcpyHostToDevice));
@@ -116,7 +107,7 @@ TEST(cudnnConvolutionForward, smoke) {
     //         }
     //     }
     // }
-    PrintTensor(hostFilter.data(), filterDimA, 4, "hostFilter");
+    // PrintTensor(hostFilter.data(), filterDimA, 4, "hostFilter");
     float* deviceFilter;
     checkCudaErrors(cudaMalloc((void**)&deviceFilter, hostFilter.size() * sizeof(float)));
     checkCudaErrors(cudaMemcpy(deviceFilter, hostFilter.data(), filterDimA[0] * filterDimA[1] * filterDimA[2] * filterDimA[3] * sizeof(float), cudaMemcpyHostToDevice));
@@ -177,7 +168,7 @@ TEST(cudnnConvolutionForward, smoke) {
     ASSERT_TRUE(fetchOutput) << "fetchOutput malloc failed";
     checkCudaErrors(cudaMemcpy(fetchOutput, deviceOutput, outputNum * sizeof(float), cudaMemcpyDeviceToHost));
 
-    PrintTensor(fetchOutput, outputDimA, 4, "fetchOutput");
+    // PrintTensor(fetchOutput, outputDimA, 4, "fetchOutput");
 
 
     cudaFree(deviceInput);
@@ -207,7 +198,7 @@ TEST(conv2d_forward_naive, smoke){
             }
         }
     }
-    PrintTensor(input_data, input_desc->shape, 4, "input_data");
+    // PrintTensor(input_data, input_desc->shape, 4, "input_data");
 
 
     TensorDesc *kernel_desc = nullptr;
@@ -219,7 +210,7 @@ TEST(conv2d_forward_naive, smoke){
     int kernel_len = 1; for (int n = 0; n < *kernel_desc->dim_n; n++) kernel_len *= kernel_desc->shape[n];
     checkCudaErrors(cudaMallocManaged((void**)&kernel_data, kernel_len * sizeof(float)));
     memcpy(kernel_data, kernel_vec.data(), kernel_len * sizeof(float));
-    PrintTensor(kernel_data, kernel_desc->shape, *kernel_desc->dim_n, "kernel_data");
+    // PrintTensor(kernel_data, kernel_desc->shape, *kernel_desc->dim_n, "kernel_data");
     // checkCudaErrors(cudaMemcpyToSymbol(kernel_const, kernel_vec.data(), kernel_len * sizeof(float)));
     // PrintTensor(kernel_const, kernel_desc->shape, *kernel_desc->dim_n, "kernel_const");
 
@@ -248,7 +239,7 @@ TEST(conv2d_forward_naive, smoke){
     conv2d_forward_naive<<<grid, block, sharedmem_size * sizeof(float)>>>(input_data, input_desc, kernel_data, kernel_desc, conv_desc, output_data, output_desc);
     // step<<<grid, block, sharedmem_size * sizeof(float)>>>(input_data, input_desc);
     checkCudaErrors(cudaDeviceSynchronize());
-    PrintTensor(output_data, output_desc->shape, *output_desc->dim_n, "output");
+    // PrintTensor(output_data, output_desc->shape, *output_desc->dim_n, "output");
 }
 
 class test_conv2d_float:
@@ -534,6 +525,15 @@ INSTANTIATE_TEST_SUITE_P(
             3, 2,
             dim3(2, 4, 4),
             dim3(2, 4, 4)
+        ),
+        std::make_tuple(
+            std::vector<int>{16, 3, 244, 244},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 7;},
+            std::vector<int>{64, 3, 7, 7},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 5;},
+            3, 2,
+            dim3(1, 4, 8),
+            dim3(1, 4, 8)
         )
     )
 );
@@ -563,7 +563,7 @@ TEST_P(test_conv2d_float, check_output_vs_cudnn){
         )
     );)
     R(checkCudaErrors(cudaDeviceSynchronize());)
-    R(PrintTensor(cudnn_output, outputDimA, 4, "cudnn_output");)
+    // R(PrintTensor(cudnn_output, outputDimA, 4, "cudnn_output");)
 
     // size_t sharedmem_size =\
     //     input_desc->shape[0] *\
@@ -581,7 +581,7 @@ TEST_P(test_conv2d_float, check_output_vs_cudnn){
         output_desc
     );
     checkCudaErrors(cudaDeviceSynchronize());
-    PrintTensor(output, output_desc->shape, *output_desc->dim_n, "output");
+    // PrintTensor(output, output_desc->shape, *output_desc->dim_n, "output");
 
     size_t len = 1;
     for (int i = 0; i < 4; i++) {
@@ -592,7 +592,7 @@ TEST_P(test_conv2d_float, check_output_vs_cudnn){
         for (int c = 0; c < output_desc->shape[1]; c++) {
             for (int h = 0; h < output_desc->shape[2]; h++) {
                 for (int w = 0; w < output_desc->shape[3]; w++) {
-                    ASSERT_EQ(
+                    ASSERT_FLOAT_EQ(
                         output[n * output_desc->stride[0] + c * output_desc->stride[1] + h * output_desc->stride[2] + w * output_desc->stride[3]],
                         cudnn_output[n * outinputStrideA[0] + c * outinputStrideA[1] + h * outinputStrideA[2] + w * outinputStrideA[3]]
                     ) << "n" << n << ", c" << c << ", h" << h << ", w" << w;
