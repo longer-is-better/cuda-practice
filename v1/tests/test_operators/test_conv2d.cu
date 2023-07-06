@@ -294,18 +294,18 @@ class test_conv2d_float:
 test_conv2d_float::test_conv2d_float(){
     std::tie(in_shape, in_gen, kernel_shape, kernel_gen, padding, stride, grid, block) = GetParam();
     
-    R(checkCudnnErr(cudnnCreate(&handle_));
-    algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
-    filterFormat = CUDNN_TENSOR_NCHW;)
+    R(checkCudnnErr(cudnnCreate(&handle_));)
+    R(algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;)
+    R(filterFormat = CUDNN_TENSOR_NCHW;)
 
 
     checkCudaErrors(cudaMallocManaged((void**)&input_desc, sizeof(TensorDesc)));
     input_desc->init("nchw", in_shape);
     input_desc = new TensorDesc("nchw", in_shape);
 
-    R(checkCudnnErr(cudnnCreateTensorDescriptor(&cudnnIdesc));
-    int inputStrideA[4]; generateStrides(in_shape.data(), inputStrideA, 4, filterFormat);
-    checkCudnnErr(cudnnSetTensorNdDescriptor(cudnnIdesc, CUDNN_DATA_FLOAT, 4, in_shape.data(), inputStrideA));)
+    R(checkCudnnErr(cudnnCreateTensorDescriptor(&cudnnIdesc));)
+    R(int inputStrideA[4]; generateStrides(in_shape.data(), inputStrideA, 4, filterFormat);)
+    R(checkCudnnErr(cudnnSetTensorNdDescriptor(cudnnIdesc, CUDNN_DATA_FLOAT, 4, in_shape.data(), inputStrideA));)
 
     checkCudaErrors(cudaMallocManaged((void**)&input, in_shape[0] * in_shape[1] * in_shape[2] * in_shape[3] * sizeof(float)));
     for (int n = 0; n < in_shape[0]; n++) {
@@ -321,10 +321,10 @@ test_conv2d_float::test_conv2d_float(){
 
     kernel_desc = new TensorDesc("oihw", kernel_shape);
 
-    R(cudnnCreateFilterDescriptor(&cudnnFdesc);
-    checkCudnnErr(cudnnSetFilterNdDescriptor(cudnnFdesc, CUDNN_DATA_FLOAT, filterFormat, 4, kernel_shape.data()));)
+    R(checkCudnnErr(cudnnCreateFilterDescriptor(&cudnnFdesc));)
+    R(checkCudnnErr(cudnnSetFilterNdDescriptor(cudnnFdesc, CUDNN_DATA_FLOAT, filterFormat, 4, kernel_shape.data()));)
 
-    cudaMallocManaged((void**)&kernel, kernel_shape[0] * kernel_shape[1] * kernel_shape[2] * kernel_shape[3]);
+    cudaMallocManaged((void**)&kernel, kernel_shape[0] * kernel_shape[1] * kernel_shape[2] * kernel_shape[3] * sizeof(float));
     for (int n = 0; n < kernel_shape[0]; n++) {
         for (int c = 0; c < kernel_shape[1]; c++) {
             for (int h = 0; h < kernel_shape[2]; h++) {
@@ -350,13 +350,13 @@ test_conv2d_float::test_conv2d_float(){
 
     output_desc = conv2d_forward_shape_infer(input_desc, kernel_desc, conv_desc);
 
-    R(checkCudnnErr(cudnnCreateTensorDescriptor(&cudnnOdesc));
+    R(checkCudnnErr(cudnnCreateTensorDescriptor(&cudnnOdesc));)
     outputDimA[0] = in_shape[0];
     outputDimA[1] = kernel_shape[0];
     outputDimA[2] = getFwdConvOutputDim(in_shape[2], convPadA[0], kernel_shape[2], convStrideA[0], convDilationA[0]);
     outputDimA[3] = getFwdConvOutputDim(in_shape[3], convPadA[1], kernel_shape[3], convStrideA[1], convDilationA[1]);
-    R(generateStrides(outputDimA, outinputStrideA, 4, CUDNN_TENSOR_NCHW));
-    R(checkCudnnErr(cudnnSetTensorNdDescriptor(cudnnOdesc, CUDNN_DATA_FLOAT, 4, outputDimA, outinputStrideA));))
+    R(generateStrides(outputDimA, outinputStrideA, 4, CUDNN_TENSOR_NCHW);)
+    R(checkCudnnErr(cudnnSetTensorNdDescriptor(cudnnOdesc, CUDNN_DATA_FLOAT, 4, outputDimA, outinputStrideA));)
     
     checkCudaErrors(cudaMallocManaged((void**)&output, output_desc->shape[0] * output_desc->shape[1] * output_desc->shape[2] * output_desc->shape[3] * sizeof(float)));
     R(checkCudaErrors(cudaMallocManaged((void**)&cudnn_output, outputDimA[0] * outputDimA[1] * outputDimA[2] * outputDimA[3] * sizeof(float)));)

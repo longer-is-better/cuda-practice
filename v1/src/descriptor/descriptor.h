@@ -51,3 +51,13 @@ struct Pool2dDesc {
     void* operator new(std::size_t size);
     void operator delete(void *ptr);
 };
+
+typedef enum {
+    SIGMOID      = 0,
+    RELU         = 1,
+    TANH         = 2,
+    CLIPPED_RELU = 3,
+    ELU          = 4,
+    IDENTITY     = 5,
+    SWISH        = 6
+} ActivationMode;

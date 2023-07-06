@@ -12,7 +12,6 @@ include_directories( ${OpenCV_INCLUDE_DIRS} )
 
 
 add_executable(test_networks main.cu ${test_network_files})
-set_target_properties(test_networks PROPERTIES CUDA_ARCHITECTURES "86")
 include_directories(${PROJECT_SOURCE_DIR}/Common)
 target_link_libraries(
   test_networks
@@ -25,6 +24,7 @@ target_link_libraries(
   utils
   GTest::gtest_main
 )
+set_target_properties(test_networks PROPERTIES CUDA_ARCHITECTURES "86")
 
 include(GoogleTest)
 gtest_discover_tests(test_networks PROPERTIES DISCOVERY_TIMEOUT 60)
