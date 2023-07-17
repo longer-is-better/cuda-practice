@@ -1,6 +1,7 @@
 #pragma once
 
 #include<string>
+#include<iostream>
 #include<vector>
 
 
@@ -11,6 +12,7 @@ struct TensorDesc {
     int* stride = nullptr;
     TensorDesc(){};
     TensorDesc(const std::string& layout, const std::vector<int>& shape);
+    TensorDesc(const std::string& layout, const int64_t *p_shape, size_t n_shape);
     TensorDesc(const TensorDesc& td) = delete;
     TensorDesc(TensorDesc&& td);
 
@@ -23,8 +25,11 @@ struct TensorDesc {
 
     void* operator new(std::size_t size);
     void operator delete(void *ptr);
+
+    size_t tensor_size();
 };
 
+std::ostream& operator<<(std::ostream& os, const TensorDesc& td);
 
 struct Conv2dDesc {
     int stride;

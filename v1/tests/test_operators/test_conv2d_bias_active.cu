@@ -52,7 +52,7 @@ getFwdConvOutputDim(int tensorDim, int pad, int filterDim, int stride, int dilat
 }
 
 
-class test_conv2d_bias_active:
+class test_conv2d_bias_active_float:
     public testing::TestWithParam<
         std::tuple<
             std::vector<int>,  // input shape
@@ -109,25 +109,25 @@ class test_conv2d_bias_active:
     float* output = nullptr;
 
 
-    test_conv2d_bias_active();
-    ~test_conv2d_bias_active();
+    test_conv2d_bias_active_float();
+    ~test_conv2d_bias_active_float();
 };
 
-test_conv2d_bias_active::test_conv2d_bias_active(){
+test_conv2d_bias_active_float::test_conv2d_bias_active_float(){
     std::tie(in_shape, in_gen, kernel_shape, kernel_gen, padding, stride, bias_gen, act_mode, grid, block) = GetParam();
     
-    R(checkCudnnErr(cudnnCreate(&handle_));
-    algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
-    filterFormat = CUDNN_TENSOR_NCHW;)
+    R(checkCudnnErr(cudnnCreate(&handle_));)
+    R(algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;)
+    R(filterFormat = CUDNN_TENSOR_NCHW;)
 
 
     checkCudaErrors(cudaMallocManaged((void**)&input_desc, sizeof(TensorDesc)));
     input_desc->init("nchw", in_shape);
     input_desc = new TensorDesc("nchw", in_shape);
 
-    R(checkCudnnErr(cudnnCreateTensorDescriptor(&cudnnIdesc));
-    int inputStrideA[4]; generateStrides(in_shape.data(), inputStrideA, 4, filterFormat);
-    checkCudnnErr(cudnnSetTensorNdDescriptor(cudnnIdesc, CUDNN_DATA_FLOAT, 4, in_shape.data(), inputStrideA));)
+    R(checkCudnnErr(cudnnCreateTensorDescriptor(&cudnnIdesc));)
+    R(int inputStrideA[4]; generateStrides(in_shape.data(), inputStrideA, 4, filterFormat);)
+    R(checkCudnnErr(cudnnSetTensorNdDescriptor(cudnnIdesc, CUDNN_DATA_FLOAT, 4, in_shape.data(), inputStrideA));)
 
     checkCudaErrors(cudaMallocManaged((void**)&input, in_shape[0] * in_shape[1] * in_shape[2] * in_shape[3] * sizeof(float)));
     for (int n = 0; n < in_shape[0]; n++) {
@@ -173,13 +173,14 @@ test_conv2d_bias_active::test_conv2d_bias_active(){
     
     bias_desc = new TensorDesc("111o", {1, 1, 1, kernel_shape[0]});
     R(checkCudnnErr(cudnnCreateTensorDescriptor(&cudnnBiasDesc));)
-    R(checkCudnnErr(cudnnSetTensor4dDescriptor(cudnnBiasDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, 1, 1, kernel_shape[0]));)
+    R(checkCudnnErr(cudnnSetTensor4dDescriptor(cudnnBiasDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, kernel_shape[0], 1, 1));)
 
 
     cudaMallocManaged((void**)&bias, kernel_shape[0] * sizeof(float));
     for (int i = 0; i < kernel_shape[0]; i++) {
         bias[i] = bias_gen(i);
     }
+    D(PrintTensor(bias, bias_desc->shape, *bias_desc->dim_n, "bias");)
 
     
     R(checkCudnnErr(cudnnCreateActivationDescriptor(&cudnnActDesc));)
@@ -200,7 +201,7 @@ test_conv2d_bias_active::test_conv2d_bias_active(){
     R(checkCudaErrors(cudaMallocManaged((void**)&cudnn_output, outputDimA[0] * outputDimA[1] * outputDimA[2] * outputDimA[3] * sizeof(float)));)
 };
 
-test_conv2d_bias_active::~test_conv2d_bias_active(){
+test_conv2d_bias_active_float::~test_conv2d_bias_active_float(){
     delete input_desc;
     R(checkCudnnErr(cudnnDestroyTensorDescriptor(cudnnIdesc));)
     checkCudaErrors(cudaFree(input));
@@ -229,161 +230,213 @@ test_conv2d_bias_active::~test_conv2d_bias_active(){
 
 INSTANTIATE_TEST_SUITE_P(
     general,
-    test_conv2d_bias_active,
+    test_conv2d_bias_active_float,
     testing::Values(
         // ----------------------------------- padding ------------------------------------------------
+        std::make_tuple(
+            std::vector<int>{1, 9216, 1, 1},
+            [](const std::vector<int>& i){return sqrt(i[0] + i[1] + i[2] + i[3]);},
+            std::vector<int>{4096, 9216, 1, 1},
+            [](const std::vector<int>& i){return sqrt((i[0] + i[1] + i[2] + i[3]) % 5);},
+            0, 1,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(4, 1, 1),
+            dim3(1024, 1, 1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 256, 6, 6},
+            [](const std::vector<int>& i){return sqrt(i[0] + i[1] + i[2] + i[3]);},
+            std::vector<int>{4096, 256, 6, 6},
+            [](const std::vector<int>& i){return sqrt((i[0] + i[1] + i[2] + i[3]) % 5);},
+            0, 1,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(4, 1, 1),
+            dim3(1024, 1, 1)
+        ),
         std::make_tuple(
             std::vector<int>{1, 1, 3, 3},
             [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
             std::vector<int>{1, 1, 3, 3},
             [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 5;},
             0, 1,
-            [](const int& i){return i * 1.1f;},
+            [](const int& i){return 10 + i * 1.1f;},
             RELU,
             dim3(1),
             dim3(1)
-        )  // ,
-        // std::make_tuple(
-        //     std::vector<int>{1, 3, 5, 5},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{2, 3, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 5;},
-        //     0, 1,
-        //     dim3(1),
-        //     dim3(1)
-        // ),
-        // std::make_tuple(
-        //     std::vector<int>{1, 3, 5, 5},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{2, 3, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     1, 1,
-        //     dim3(1),
-        //     dim3(1)
-        // ),
-        // std::make_tuple(
-        //     std::vector<int>{1, 3, 5, 5},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{2, 3, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     2, 1,
-        //     dim3(1),
-        //     dim3(1)
-        // ),
-        // std::make_tuple(
-        //     std::vector<int>{1, 3, 5, 5},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{2, 3, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     3, 1,
-        //     dim3(1),
-        //     dim3(1)
-        // ),
-        // // -------------------------------- stride --------------------------------------------------
-        // std::make_tuple(
-        //     std::vector<int>{1, 3, 5, 5},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{2, 3, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     2, 1,
-        //     dim3(1),
-        //     dim3(1)
-        // ),
-        // std::make_tuple(
-        //     std::vector<int>{1, 3, 5, 5},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{2, 3, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     2, 2,
-        //     dim3(1),
-        //     dim3(1)
-        // ),
-        // std::make_tuple(
-        //     std::vector<int>{1, 3, 5, 5},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{2, 3, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     2, 3,
-        //     dim3(1),
-        //     dim3(1)
-        // ),
-        // std::make_tuple(
-        //     std::vector<int>{1, 3, 5, 5},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{2, 3, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     2, 4,
-        //     dim3(1),
-        //     dim3(1)
-        // ),
-        // // ----------------------------------- grid block -------------------------------------------------------
-        // std::make_tuple(
-        //     std::vector<int>{1, 3, 8, 8},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{1, 3, 2, 2},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     3, 2,
-        //     dim3(2, 2, 2),
-        //     dim3(2, 2, 2)
-        // ),
-        // std::make_tuple(
-        //     std::vector<int>{3, 1, 244, 244},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{1, 1, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     3, 2,
-        //     dim3(1, 4, 4),
-        //     dim3(1, 4, 4)
-        // ),
-        // std::make_tuple(  // cudnn wrong?
-        //     std::vector<int>{1, 4, 2, 2},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{4, 4, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     2, 1,
-        //     dim3(1, 1, 1),
-        //     dim3(1, 1, 1)
-        // ),
-        // std::make_tuple(
-        //     std::vector<int>{1, 4, 2, 2},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{4, 4, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     2, 1,
-        //     dim3(1, 1, 1),
-        //     dim3(1, 1, 1)
-        // ),
-        // std::make_tuple(
-        //     std::vector<int>{3, 4, 7, 7},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{4, 4, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     3, 2,
-        //     dim3(2, 4, 4),
-        //     dim3(2, 4, 4)
-        // ),
-        // std::make_tuple(
-        //     std::vector<int>{3, 4, 32, 32},
-        //     [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
-        //     std::vector<int>{6, 4, 3, 3},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
-        //     3, 2,
-        //     dim3(2, 4, 4),
-        //     dim3(2, 4, 4)
-        // ),
-        // std::make_tuple(
-        //     std::vector<int>{16, 3, 244, 244},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 7;},
-        //     std::vector<int>{64, 3, 7, 7},
-        //     [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 5;},
-        //     3, 2,
-        //     dim3(1, 4, 8),
-        //     dim3(1, 4, 8)
-        // )
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 5;},
+            0, 1,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(1),
+            dim3(1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            1, 1,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(1),
+            dim3(1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 1,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(1),
+            dim3(1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            3, 1,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(1),
+            dim3(1)
+        ),
+        // -------------------------------- stride --------------------------------------------------
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 1,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(1),
+            dim3(1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 2,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(1),
+            dim3(1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 3,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(1),
+            dim3(1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 3, 5, 5},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{2, 3, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 4,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(1),
+            dim3(1)
+        ),
+        // ----------------------------------- grid block -------------------------------------------------------
+        std::make_tuple(
+            std::vector<int>{1, 3, 8, 8},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{1, 3, 2, 2},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            3, 2,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(2, 2, 2),
+            dim3(2, 2, 2)
+        ),
+        std::make_tuple(
+            std::vector<int>{3, 1, 244, 244},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{1, 1, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            3, 2,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(1, 4, 4),
+            dim3(1, 4, 4)
+        ),
+        std::make_tuple(  // cudnn wrong?
+            std::vector<int>{1, 4, 2, 2},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{4, 4, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 1,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(1, 1, 1),
+            dim3(1, 1, 1)
+        ),
+        std::make_tuple(
+            std::vector<int>{1, 4, 2, 2},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{4, 4, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            2, 1,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(1, 1, 1),
+            dim3(1, 1, 1)
+        ),
+        std::make_tuple(
+            std::vector<int>{3, 4, 7, 7},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{4, 4, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            3, 2,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(2, 4, 4),
+            dim3(2, 4, 4)
+        ),
+        std::make_tuple(
+            std::vector<int>{3, 4, 32, 32},
+            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            std::vector<int>{6, 4, 3, 3},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]);},
+            3, 2,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(2, 4, 4),
+            dim3(2, 4, 4)
+        ),
+        std::make_tuple(
+            std::vector<int>{16, 3, 244, 244},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 7;},
+            std::vector<int>{64, 3, 11, 11},
+            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 5;},
+            2, 4,
+            [](const int& i){return 10 + i * 1.1f;},
+            RELU,
+            dim3(8, 8, 8),
+            dim3(8, 8, 8)
+        )
     )
 );
 
-TEST_P(test_conv2d_bias_active, check_output_vs_cudnn){
+TEST_P(test_conv2d_bias_active_float, check_output_vs_cudnn){
     float alpha = 1.f, beta = 0.f;
     size_t workSpaceSize = 0;
     R(checkCudnnErr(cudnnGetConvolutionForwardWorkspaceSize(handle_, cudnnIdesc, cudnnFdesc, cudnnConvDesc, cudnnOdesc, algo, &workSpaceSize));)
@@ -403,8 +456,8 @@ TEST_P(test_conv2d_bias_active, check_output_vs_cudnn){
             workSpace,
             workSpaceSize,
             (void*)(&beta),
-            cudnnIdesc,
-            input,
+            cudnnOdesc,
+            cudnn_output,
             cudnnBiasDesc,
             bias,
             cudnnActDesc,
@@ -413,7 +466,7 @@ TEST_P(test_conv2d_bias_active, check_output_vs_cudnn){
         )
     );)
     R(checkCudaErrors(cudaDeviceSynchronize());)
-    // R(PrintTensor(cudnn_output, outputDimA, 4, "cudnn_output");)
+    R(PrintTensor(cudnn_output, outputDimA, 4, "cudnn_output");)
 
     // size_t sharedmem_size =\
     //     input_desc->shape[0] *\
@@ -431,10 +484,11 @@ TEST_P(test_conv2d_bias_active, check_output_vs_cudnn){
         bias_desc,
         RELU,
         output,
-        output_desc
+        output_desc,
+        true
     );
     checkCudaErrors(cudaDeviceSynchronize());
-    // PrintTensor(output, output_desc->shape, *output_desc->dim_n, "output");
+    PrintTensor(output, output_desc->shape, *output_desc->dim_n, "output");
 
     size_t len = 1;
     for (int i = 0; i < 4; i++) {

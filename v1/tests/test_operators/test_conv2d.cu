@@ -8,6 +8,7 @@
 #include"helper_cuda.h"
 
 #include <cudnn.h>
+#include <torch/torch.h>
 
 #include"print_tensor.h"
 #include"log.h"
@@ -236,7 +237,7 @@ TEST(conv2d_forward_naive, smoke){
         (conv_desc->stride * block.z + kernel_desc->shape[3] - 2 * conv_desc->padding - 1);
 
     // conv2d_forward_naive<<<grid, block, sharedmem_size * sizeof(float)>>>(input_data, input_desc, kernel_const, kernel_desc, conv_desc, output_data, output_desc);
-    conv2d_forward_naive<<<grid, block, sharedmem_size * sizeof(float)>>>(input_data, input_desc, kernel_data, kernel_desc, conv_desc, output_data, output_desc);
+    conv2d_forward_naive<<<grid, block, sharedmem_size * sizeof(float)>>>(input_data, input_desc, kernel_data, kernel_desc, conv_desc, output_data, output_desc, true);
     // step<<<grid, block, sharedmem_size * sizeof(float)>>>(input_data, input_desc);
     checkCudaErrors(cudaDeviceSynchronize());
     // PrintTensor(output_data, output_desc->shape, *output_desc->dim_n, "output");
@@ -299,8 +300,6 @@ test_conv2d_float::test_conv2d_float(){
     R(filterFormat = CUDNN_TENSOR_NCHW;)
 
 
-    checkCudaErrors(cudaMallocManaged((void**)&input_desc, sizeof(TensorDesc)));
-    input_desc->init("nchw", in_shape);
     input_desc = new TensorDesc("nchw", in_shape);
 
     R(checkCudnnErr(cudnnCreateTensorDescriptor(&cudnnIdesc));)
@@ -391,9 +390,9 @@ INSTANTIATE_TEST_SUITE_P(
         // ----------------------------------- padding ------------------------------------------------
         std::make_tuple(
             std::vector<int>{1, 1, 3, 3},
-            [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
+            [](const std::vector<int>& i){return sqrt(i[0] + i[1] + i[2] + i[3]);},
             std::vector<int>{1, 1, 3, 3},
-            [](const std::vector<int>& i){return (i[0] + i[1] + i[2] + i[3]) % 5;},
+            [](const std::vector<int>& i){return sqrt((i[0] + i[1] + i[2] + i[3]) % 5);},
             0, 1,
             dim3(1),
             dim3(1)
@@ -563,13 +562,7 @@ TEST_P(test_conv2d_float, check_output_vs_cudnn){
         )
     );)
     R(checkCudaErrors(cudaDeviceSynchronize());)
-    // R(PrintTensor(cudnn_output, outputDimA, 4, "cudnn_output");)
-
-    // size_t sharedmem_size =\
-    //     input_desc->shape[0] *\
-    //     input_desc->shape[1] *\
-    //     (conv_desc->stride * block.y + kernel_desc->shape[2] - 2 * conv_desc->padding - 1) *\
-    //     (conv_desc->stride * block.z + kernel_desc->shape[3] - 2 * conv_desc->padding - 1);
+    R(PrintTensor(cudnn_output, outputDimA, 4, "cudnn_output");)
 
     conv2d_forward_naive<<<grid, block/*, sharedmem_size * sizeof(float)*/>>>(
         input,
@@ -578,10 +571,11 @@ TEST_P(test_conv2d_float, check_output_vs_cudnn){
         kernel_desc,
         conv_desc,
         output,
-        output_desc
+        output_desc,
+        true
     );
     checkCudaErrors(cudaDeviceSynchronize());
-    // PrintTensor(output, output_desc->shape, *output_desc->dim_n, "output");
+    PrintTensor(output, output_desc->shape, *output_desc->dim_n, "output");
 
     size_t len = 1;
     for (int i = 0; i < 4; i++) {
@@ -600,4 +594,60 @@ TEST_P(test_conv2d_float, check_output_vs_cudnn){
             }
         }
     })
+}
+
+
+
+TEST_P(test_conv2d_float, check_output_vs_torch){
+    std::vector<int64_t> in_shape_int64;
+    for (auto i: in_shape) in_shape_int64.push_back((int64_t)i);
+    torch::Tensor torch_input = torch::from_blob(input, in_shape_int64);
+
+
+    std::vector<int64_t> kernel_shape_int64;
+    for (auto i: kernel_shape) kernel_shape_int64.push_back((int64_t)i);
+    torch::Tensor weight = torch::from_blob(kernel, kernel_shape_int64);
+    torch::nn::Conv2d conv(torch::nn::Conv2dOptions(in_shape[1], kernel_shape[0], {in_shape[2], in_shape[3]}).padding(padding).stride(stride));  // 输入通道数为 3，输出通道数为 64，卷积核大小为 3x3，padding 为 1
+    conv->weight = weight;
+
+    // 运行前向传播
+    torch::Tensor torch_output = conv->forward(torch_input);
+
+    // 打印输出张量的形状
+    std::cout << "Output shape: " << torch_output.sizes() << std::endl;
+    std::cout << "Output: " << torch_output << std::endl;
+
+
+
+
+    conv2d_forward_naive<<<grid, block/*, sharedmem_size * sizeof(float)*/>>>(
+        input,
+        input_desc,
+        kernel,
+        kernel_desc,
+        conv_desc,
+        output,
+        output_desc,
+        true
+    );
+    checkCudaErrors(cudaDeviceSynchronize());
+    PrintTensor(output, output_desc->shape, *output_desc->dim_n, "output");
+
+    // size_t len = 1;
+    // for (int i = 0; i < 4; i++) {
+    //     len *= outputDimA[i];
+    //     ASSERT_EQ(outputDimA[i], output_desc->shape[i]) << "i: " << i << std::endl;
+    // }
+    // R(for (int n = 0; n < output_desc->shape[0]; n++) {
+    //     for (int c = 0; c < output_desc->shape[1]; c++) {
+    //         for (int h = 0; h < output_desc->shape[2]; h++) {
+    //             for (int w = 0; w < output_desc->shape[3]; w++) {
+    //                 ASSERT_FLOAT_EQ(
+    //                     output[n * output_desc->stride[0] + c * output_desc->stride[1] + h * output_desc->stride[2] + w * output_desc->stride[3]],
+    //                     cudnn_output[n * outinputStrideA[0] + c * outinputStrideA[1] + h * outinputStrideA[2] + w * outinputStrideA[3]]
+    //                 ) << "n" << n << ", c" << c << ", h" << h << ", w" << w;
+    //             }
+    //         }
+    //     }
+    // })
 }

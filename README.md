@@ -90,9 +90,21 @@ Expected equality of these values:
 ![DynamicParallelism](cuda-playground/multifile/DynamicParallelism.png "DynamicParallelism")
 
 ```
-# --relocatable-device-code {true|false}          (-rdc)                  
+# --relocatable-device-code {true|false}          (-rdc)  
 #         Enable (disable) the generation of relocatable device code.  If disabled,
 #         executable device code is generated.  Relocatable device code must be linked
 #         before it can be executed.
 #         Default value:  false.
 ```
+
+# to do
+
+合并 desc 和 T* 为 tensor 类，连续非连续 version，存储位置管理。
+
+网络 parse 功能
+
+智能指针
+
+glog
+
+managedmemery 导致 cuda gdb 卡住？

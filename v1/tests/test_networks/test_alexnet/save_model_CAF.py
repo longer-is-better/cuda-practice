@@ -5,24 +5,7 @@ import torchvision
 # An instance of your model
 model = torchvision.models.alexnet(pretrained=True)
 model.avgpool = torch.nn.Sequential(model.avgpool, torch.nn.Flatten(1))
-model.classifier[0] = torch.nn.Dropout(p = 0)
-model.classifier[3] = torch.nn.Dropout(p = 0)
-
-
-# weight_0 = torch.zeros([1, 9216])
-# for i in range(16, 17):
-#     weight_0[0][i] = 1.
-# model.classifier[1].weight = torch.nn.Parameter(weight_0)
-# model.classifier[1].bias = torch.nn.Parameter(torch.zeros([1, 1]))
-
-def forward(self, x: torch.Tensor) -> torch.Tensor:
-    x = self.features(x)
-    x = self.avgpool(x)
-    x = self.classifier(x)
-    return x
-
-model.forward = forward.__get__(model, torchvision.models.alexnet)
-
+model = model.features + model.avgpool
 print(model)
 # AlexNet(
 #   (features): Sequential(
@@ -100,6 +83,6 @@ traced_script_module.save(
         os.path.dirname(
             os.path.abspath(__file__)
         ),
-        "traced_alexnet_model.pt"
+        "traced_alexnet_model_FAF.pt"
     )
 )

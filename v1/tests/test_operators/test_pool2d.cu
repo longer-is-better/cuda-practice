@@ -3,7 +3,7 @@
 #include"gtest/gtest.h"
 
 #include"print_tensor.h"
-#include"max_pool2d.cuh"
+#include"pool2d.cuh"
 #include"helper_cuda.h"
 #include"cudnn_error.cuh"
 #include"log.h"
@@ -129,7 +129,7 @@ test_pool2d_float::test_pool2d_float(){
                 cudnnPdesc,
                 CUDNN_POOLING_MAX_DETERMINISTIC,
                 // CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING,
-                CUDNN_PROPAGATE_NAN,
+                CUDNN_NOT_PROPAGATE_NAN,
                 window_shape[0],
                 window_shape[1],
                 padding[0],
@@ -182,11 +182,11 @@ INSTANTIATE_TEST_SUITE_P(
             dim3(1, 2, 2)
         ),
         std::make_tuple(
-            std::vector<int>{1, 3, 255, 255},
+            std::vector<int>{1, 256, 6, 6},
             [](const std::vector<int>& i){return i[0] + i[1] + i[2] + i[3];},
             std::vector<int>{1, 1},
-            std::vector<int>{10, 10},
-            std::vector<int>{3, 2},
+            std::vector<int>{0, 0},
+            std::vector<int>{1, 1},
             dim3(4, 8, 8),
             dim3(3, 4, 4)
         )
@@ -194,7 +194,7 @@ INSTANTIATE_TEST_SUITE_P(
 );
 
 
-TEST_P(test_pool2d_float, check_output_vs_cudnn){
+TEST_P(test_pool2d_float, max_check_output_vs_cudnn){
     float alpha = 1.f, beta = 0.f;
     R(
         checkCudnnErr(
@@ -214,6 +214,71 @@ TEST_P(test_pool2d_float, check_output_vs_cudnn){
     R(PrintTensor(cudnn_output, outputDimA, 4, "cudnn_output");)
 
     max_pool2d<<<grid, block/*, sharedmem_size * sizeof(float)*/>>>(
+        input,
+        input_desc,
+        pool_desc,
+        output,
+        output_desc
+    );
+    checkCudaErrors(cudaDeviceSynchronize());
+    PrintTensor(output, output_desc->shape, *output_desc->dim_n, "output");
+
+    size_t len = 1;
+    for (int i = 0; i < 4; i++) {
+        len *= outputDimA[i];
+        ASSERT_EQ(outputDimA[i], output_desc->shape[i]) << "i: " << i << std::endl;
+    }
+    R(for (int n = 0; n < output_desc->shape[0]; n++) {
+        for (int c = 0; c < output_desc->shape[1]; c++) {
+            for (int h = 0; h < output_desc->shape[2]; h++) {
+                for (int w = 0; w < output_desc->shape[3]; w++) {
+                    ASSERT_FLOAT_EQ(
+                        output[n * output_desc->stride[0] + c * output_desc->stride[1] + h * output_desc->stride[2] + w * output_desc->stride[3]],
+                        cudnn_output[n * outinputStrideA[0] + c * outinputStrideA[1] + h * outinputStrideA[2] + w * outinputStrideA[3]]
+                    ) << "n" << n << ", c" << c << ", h" << h << ", w" << w;
+                }
+            }
+        }
+    })
+}
+
+
+TEST_P(test_pool2d_float, avg_check_output_vs_cudnn){
+    float alpha = 1.f, beta = 0.f;
+    R(
+        checkCudnnErr(
+            cudnnSetPooling2dDescriptor(
+                cudnnPdesc,
+                CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING,
+                // CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING,
+                CUDNN_PROPAGATE_NAN,
+                window_shape[0],
+                window_shape[1],
+                padding[0],
+                padding[1],
+                stride[0],
+                stride[1]
+            )
+        );
+    )
+    R(
+        checkCudnnErr(
+            cudnnPoolingForward(
+                handle_,
+                cudnnPdesc,
+                &alpha,
+                cudnnIdesc,
+                input,
+                &beta,
+                cudnnOdesc,
+                cudnn_output
+            )
+        );
+    )
+    R(checkCudaErrors(cudaDeviceSynchronize());)
+    R(PrintTensor(cudnn_output, outputDimA, 4, "cudnn_output");)
+
+    avg_pool2d<<<grid, block/*, sharedmem_size * sizeof(float)*/>>>(
         input,
         input_desc,
         pool_desc,

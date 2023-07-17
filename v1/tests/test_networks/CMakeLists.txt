@@ -17,6 +17,7 @@ target_link_libraries(
   test_networks
   ${TORCH_LIBRARIES}
   ${OpenCV_LIBS}
+  alexnet
   # pool
   # relu
   # conv2d

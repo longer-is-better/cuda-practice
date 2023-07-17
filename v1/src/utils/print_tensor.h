@@ -3,8 +3,8 @@
 #include<string>
 
 
-static int NC_MAX = 2;
-static int HW_MAX = 16;
+static int NC_MAX = 99999;
+static int HW_MAX = 7;
 
 template<typename T>
 void PrintVector(const T* ptr, int num) {
@@ -13,7 +13,7 @@ void PrintVector(const T* ptr, int num) {
             std::cout << "row(" << num << ") too large, print " << HW_MAX << " only.";
             break;
         }
-        std::cout << ptr[n] << " ";
+        std::cout << std::fixed << std::setprecision(6) << ptr[n] << " ";
     }
     std::cout << std::endl;
 }
