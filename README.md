@@ -85,7 +85,7 @@ Expected equality of these values:
 
 1. Implement relu, test and optimize it
 
-# 新知识
+* [ ] 新知识
 
 ![DynamicParallelism](cuda-playground/multifile/DynamicParallelism.png "DynamicParallelism")
 
@@ -105,6 +105,8 @@ Expected equality of these values:
 
 智能指针
 
-glog
+glog gflag
 
 managedmemery 导致 cuda gdb 卡住？
+
+验证 lunch config thread num > 1024 的话，getlaterror 能捕捉到么

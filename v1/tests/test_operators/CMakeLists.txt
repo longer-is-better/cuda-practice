@@ -1,6 +1,6 @@
 
 find_package(PythonInterp REQUIRED)
-list(APPEND CMAKE_PREFIX_PATH ${PROJECT_SOURCE_DIR}/3rd_party/libtorch)
+list(APPEND CMAKE_PREFIX_PATH /usr/local/libtorch)
 find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
