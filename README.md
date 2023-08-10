@@ -51,6 +51,10 @@ class AlexNet(nn.Module):
 
 ## 问题和解决方案
 
+动态库循环依赖
+
+纯cpp编译依赖.cu ，没有找到优雅的解决方法，只是将所有cpp改成.cu用ncc编译了
+
 ## diary
 
 [ RUN      ] general/test_relu_float_1d_input.check_output_vs_cpu/2
@@ -101,6 +105,8 @@ Expected equality of these values:
 
 合并 desc 和 T* 为 tensor 类，连续非连续 version，存储位置管理。
 
+位置（host  cuda）枚举改为 位置类，单例，运行时 自动检测可用设备形成设备列表，新增设备就不用改所有相关位置 malloc就不用if cuda if host
+
 网络 parse 功能
 
 智能指针
@@ -110,3 +116,43 @@ glog gflag
 managedmemery 导致 cuda gdb 卡住？
 
 验证 lunch config thread num > 1024 的话，getlaterror 能捕捉到么
+
+多线程式：重复使用tensor可以避免重复malloc free，对于推理，这其实就是几个推理线程的问题，多个推理线程可以共享统一份权重，申请多份流动tensor每个线程一个 stream即可
+
+流水线式：不合理的，想要流水线，layer之间需要queue缓冲，queue里面还是tensor，否则整个网络推理被最慢的layer限制。而且还要为每个layer做线程池，暂时认为是很不好的实现。如果是为了节省内存，所有tensor（weight，data stream）仅申请一份，最慢的层没有得到结果之前，前面的层也无法保存结果。使用两份buffer解决这个问题，锁很复杂。实现也很难。
+
+network类保存：
+
+网络结构，即layer构成的有向无环图。
+
+还负责遍历此图：多余所有输出layer，连接一个dummy outputlayer，以此为root节点向前（pre layers）宽度优先遍历，push进一个先进后出的可遍历的结构，称作launch queue，之后构造的推理器可按照此顺序执行forward来launch kernel（在相应的cudastream)
+
+构建网络： 确定layer结构，给layer IO tensor* 赋值（空）
+
+创建 推理器，确定shape，按照launch queue顺序 shape infer，layer IO tensor 得到shape信息
+
+推理器为（数据流tensor）申请空间
+
+推理器执行推理
+
+samart ptr !!!!
+
+# v3
+
+多卡
+
+多输入多数出网络
+
+内部带有分支的网络
+
+支持可变网络，且性能不下降
+
+推理加速：1. 多cuda stream并行，每次forward制定stream，需要stream pool？ 2. 流水线？
+
+训练加速： 支持多batch，分布式训练？
+
+oprator 其实就是 compute gragh，把oprator 抽象为  compute gragh，可以实现 计算图的 连接 运算
+
+kernel 模板貌似没什么意义
+
+network operator tensor 的 loation（host device）需要理清一遍

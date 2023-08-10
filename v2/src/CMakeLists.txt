@@ -1,0 +1,6 @@
+add_subdirectory(graphs)
+add_subdirectory(kernels)
+add_subdirectory(network)
+add_subdirectory(operators)
+add_subdirectory(tensor)
+add_subdirectory(utils)
