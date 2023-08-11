@@ -47,6 +47,7 @@ TEST(WTF, WTF){
     ComputeGraph test_graph;
     test_graph._weight_tensors.push_back(new Tensor({2, 2}));
     test_graph._weight_tensors[0]->update_weights(1.f, cudaStreamDefault);
+    new ElementWise(); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 }
 
 TEST(network, smoke) {
@@ -57,7 +58,8 @@ TEST(network, smoke) {
     for (int i = 0; i < test_graph._weight_tensors[0]->_element_count; i++) {
         test_graph._weight_tensors[0]->_p_data[i] = i;
     }
-    Operator *ele = new ElementWise(test_graph._input_tensors[0], test_graph._weight_tensors[0], ELE_OP::ADD);
+    // Operator *ele = new ElementWise();
+    // Operator *ele = new ElementWise(test_graph._input_tensors[0], test_graph._weight_tensors[0], ELE_OP::ADD);
 
     // Network test_net(&test_graph, true, cudaStreamDefault);
     // test_net.to(cudaMemoryTypeDevice);

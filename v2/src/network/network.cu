@@ -51,7 +51,7 @@ void Network::init(std::vector<Tensor*> sample_inputs, std::string weight_path) 
         if (_train) weight_tensor->malloc_gradient();
     }
     for (Operator *op: get_op_seq()) {
-        op->infer_shape();
+        // op->infer_shape();
         for (Tensor *tensor: op->_output_tensors) {
             tensor->malloc_data();
             if (_train) tensor->malloc_gradient();
@@ -67,7 +67,7 @@ std::vector<Tensor*> Network::forward(std::vector<Tensor*> input_tensors){
         *_input_tensors[i] = *input_tensors[i];
     }
     for (Operator* op: get_op_seq()) {
-        op->forward();
+        // op->forward();
     }
     checkCudaErrors(cudaDeviceSynchronize());
     return get_output_tensors();
@@ -77,7 +77,7 @@ std::vector<Tensor*> Network::forward(std::vector<Tensor*> input_tensors){
 
 void Network::backward() {
     for (auto it = get_op_seq().rbegin(); it != get_op_seq().rend(); ++it) {
-        (*it)->backward();
+        // (*it)->backward();
     }
 }
 

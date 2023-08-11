@@ -49,7 +49,7 @@ void ComputeGraph::copy(
     }
 
     for (Operator* op: this->get_op_seq()) {
-        operator_map_on[op] = op->copy();
+        // operator_map_on[op] = op->copy();
         for (Tensor* output_tensor: op->_output_tensors) {
             Tensor* copyed_tensor = new Tensor(*output_tensor);
             tensor_map_on[output_tensor] = copyed_tensor;

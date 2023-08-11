@@ -33,10 +33,10 @@ public:
     virtual void mirror(const std::map<Tensor*, Tensor*>& tensor_map, const std::map<Operator*, Operator*>& operator_map);
     virtual int indegree();
     virtual void set_cudastream(cudaStream_t cudastream);
-    virtual Operator* copy() = 0;
-    virtual void infer_shape() = 0;
-    virtual void forward() = 0;
-    virtual void backward() = 0;
+    // virtual Operator* copy() = 0;
+    // virtual void infer_shape() = 0;
+    // virtual void forward() = 0;
+    // virtual void backward() = 0;
 
 
 
