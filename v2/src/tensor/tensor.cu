@@ -354,15 +354,15 @@ void Tensor::fill_data_random(float lower_bound, float upper_bound){
     LOG(INFO) << "random fill tensor[" << _name << "] data.";
 }
 
-// void Tensor::mirror(
-//     const std::map<Tensor *, Tensor *> &tensor_map,
-//     const std::map<Operator *, Operator *> &operator_map
-// ) {
-//     if (_p_from) tensor_map.at(this)->_p_from = operator_map.at(_p_from);
-//     for (Operator *op: _to) {
-//         tensor_map.at(this)->_to.push_back(operator_map.at(op));
-//     }
-// }
+void Tensor::mirror(
+    const std::map<Tensor *, Tensor *> &tensor_map,
+    const std::map<Operator *, Operator *> &operator_map
+) {
+    if (_p_from) tensor_map.at(this)->_p_from = operator_map.at(_p_from);
+    for (Operator *op: _to) {
+        tensor_map.at(this)->_to.push_back(operator_map.at(op));
+    }
+}
 
 void Tensor::update_weights(float alpha, cudaStream_t cudastream) {
     // CHECK_NOTNULL(_p_data);

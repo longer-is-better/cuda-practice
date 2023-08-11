@@ -33,7 +33,7 @@ public:
     float *_p_data = nullptr;
     float *_p_gradient = nullptr;
 
-    // Operator *_p_from = nullptr;
+    Operator *_p_from = nullptr;
     std::vector<Operator*> _to = {};
 
     Tensor *_shadow_of = nullptr;
@@ -55,7 +55,7 @@ public:
     bool load_data() {LOG(WARNING) << "not implement"; return false;};
     void to(cudaMemoryType memorytype);
     void fill_data_random(float lower_bound, float upper_bound);
-    // void mirror(const std::map<Tensor*, Tensor*>& tensor_map, const std::map<Operator*, Operator*>& operator_map);
+    void mirror(const std::map<Tensor*, Tensor*>& tensor_map, const std::map<Operator*, Operator*>& operator_map);
     void update_weights(float alpha, cudaStream_t cudastream);
     friend std::ostream& operator<<(std::ostream& os, Tensor tensor);
 
