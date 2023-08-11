@@ -9,7 +9,7 @@
 
 // #include "operators.h"
 
-// class Operator;
+class Operator;
 
 class Tensor
 {
@@ -34,7 +34,7 @@ public:
     float *_p_gradient = nullptr;
 
     // Operator *_p_from = nullptr;
-    // std::vector<Operator*> _to = {};
+    std::vector<Operator*> _to = {};
 
     Tensor *_shadow_of = nullptr;
     std::set<Tensor*> _shadows = {};

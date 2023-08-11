@@ -14,9 +14,9 @@ ComputeGraph::~ComputeGraph() {
 std::list<Operator*> &ComputeGraph::get_op_seq() {
     if (_op_seq.empty()) {
         for (Tensor* t: _input_tensors) {
-            // for (Operator* op: t->_to) {
-            //     _op_seq.push_back(op);
-            // }
+            for (Operator* op: t->_to) {
+                _op_seq.push_back(op);
+            }
         }
         for (Operator* p_op_in_seq: _op_seq) {
             for (std::pair<Operator* const, bool>& pair_next_operator: p_op_in_seq->_nextoperators) {
