@@ -12,7 +12,7 @@ public:
     std::vector<Tensor*> _weight_tensors;
     std::vector<Tensor*> _output_tensors;
 
-    // std::list<Operator*> _op_seq;  // todo: cache, clear cache after changing graph
+    std::list<Operator*> _op_seq;  // todo: cache, clear cache after changing graph
 
     
     // std::vector<Tensor*> _output_tensors;  // not very need, tensor which has no following op is output, maybe use for cache
@@ -25,7 +25,7 @@ public:
     ComputeGraph& operator=(ComputeGraph&& computegraph) = delete;
     ~ComputeGraph();
 
-    // std::list<Operator*> &get_op_seq();
+    std::list<Operator*> &get_op_seq();
     // std::vector<Tensor*> get_output_tensors();
 
     // void copy(
