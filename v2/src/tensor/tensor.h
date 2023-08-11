@@ -40,7 +40,7 @@ public:
     std::set<Tensor*> _shadows = {};
 
     Tensor();
-    // Tensor(Operator *p_from);
+    Tensor(Operator *p_from);
     Tensor(std::vector<size_t> shape);
     Tensor(const Tensor &tensor);
     Tensor(Tensor &&tensor);

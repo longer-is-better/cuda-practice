@@ -2,35 +2,15 @@
 #include <gtest/gtest.h>
 
 #include "compute_graph.h"
-// #include "network.h"
+#include "network.h"
 
 // #include "l1loss_graph.cuh"
 // #include "operators.h"
 
-// #include "elementwise.cuh"
+#include "elementwise.cuh"
 
 #include "cuda_tools.cuh"
 
-
-// TEST(eleip, smoke) { 
-//     float *IO = nullptr;
-//     checkCudaErrors(cudaMalloc(&IO, 16));
-//     float IO_h[4] = {1, 1, 2, 3};
-//     checkCudaErrors(cudaMemcpy(IO, IO_h, 16, cudaMemcpyHostToDevice));
-
-//     kelementwise_inplace<<<1, 4>>>(
-//         4,
-//         IO,
-//         1.f,
-//         IO,
-//         ELE_OP::ADD
-//     );
-
-//     checkCudaErrors(cudaMemcpy(IO_h, IO, 16, cudaMemcpyDeviceToHost));
-
-//     for (auto i: IO_h) std::cout << i << " ";
-
-// }
 
 
 TEST(WTF, WTF){
@@ -45,13 +25,17 @@ TEST(WTF, WTF){
     // vt.push_back(a);
     // vt[0]->update_weights(1.f, cudaStreamDefault);
 
+// -----------------------------------------------------------
 
-
-    Tensor* a = new Tensor({1});
-    a->update_weights(1.f, cudaStreamDefault);
-    ComputeGraph test_graph;
-    // test_graph._weight_tensors.push_back(a);
+    // Tensor* a = new Tensor({1});
     // a->update_weights(1.f, cudaStreamDefault);
+    // ComputeGraph test_graph;
+
+// -----------------------------------------------------------
+
+    // Tensor* a = new Tensor({1});
+    // ComputeGraph test_graph;
+    // test_graph._weight_tensors.push_back(a);
     // test_graph._weight_tensors[0]->update_weights(1.f, cudaStreamDefault);
 
 
@@ -60,29 +44,29 @@ TEST(WTF, WTF){
     // test_graph._weight_tensors.push_back(a);
     // test_graph._weight_tensors[0]->update_weights(1.f, cudaStreamDefault);
 
-    // ComputeGraph test_graph;
-    // test_graph._weight_tensors.push_back(new Tensor({2, 2}));
-    // test_graph._weight_tensors[0]->update_weights(1.f, cudaStreamDefault);
+    ComputeGraph test_graph;
+    test_graph._weight_tensors.push_back(new Tensor({2, 2}));
+    test_graph._weight_tensors[0]->update_weights(1.f, cudaStreamDefault);
 }
 
-// TEST(network, smoke) {
-//     ComputeGraph test_graph;
-//     test_graph._input_tensors.push_back(new Tensor());
+TEST(network, smoke) {
+    ComputeGraph test_graph;
+    test_graph._input_tensors.push_back(new Tensor());
 
-//     // test_graph._input_tensors[0]->test();
+    test_graph._weight_tensors.push_back(new Tensor({2, 2}));
+    for (int i = 0; i < test_graph._weight_tensors[0]->_element_count; i++) {
+        test_graph._weight_tensors[0]->_p_data[i] = i;
+    }
+    Operator *ele = new ElementWise(test_graph._input_tensors[0], test_graph._weight_tensors[0], ELE_OP::ADD);
 
-//     test_graph._weight_tensors.push_back(new Tensor({2, 2}));
-//     for (int i = 0; i < test_graph._weight_tensors[0]->_element_count; i++) {
-//         test_graph._weight_tensors[0]->_p_data[i] = i;
-//     }
-//     new ElementWise(test_graph._input_tensors[0], test_graph._weight_tensors[0], ELE_OP::ADD);
+    // Network test_net(&test_graph, true, cudaStreamDefault);
+    // test_net.to(cudaMemoryTypeDevice);
 
-//     Network test_net(&test_graph, true, cudaStreamDefault);
-//     test_net.to(cudaMemoryTypeDevice);
+    // std::vector<Tensor*> sample_inputs{new Tensor({2, 2})};
+    // sample_inputs[0]->fill_data_random(0.9, 1.0);
+    // test_net.init(sample_inputs, "");
 
-//     std::vector<Tensor*> sample_inputs{new Tensor({2, 2})};
-//     sample_inputs[0]->fill_data_random(0.9, 1.0);
-//     test_net.init(sample_inputs, "");
+    // test_net._weight_tensors[0]->update_weights(1.f, cudaStreamDefault);
 //     for (int i = 0; i < 100; i++){
 //         Tensor t1({2, 2});
 //         t1.malloc_gradient();
@@ -117,7 +101,7 @@ TEST(WTF, WTF){
 
 //         // std::cout << "---------------" << std::endl;
 //     }
-// }
+}
 
 // TEST(network, mm) {
 //     ComputeGraph *mm_graph = new ComputeGraph();

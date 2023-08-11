@@ -23,13 +23,13 @@ Tensor::Tensor(){
 }
 
 
-// Tensor::Tensor(
-//     Operator *p_from
-// ):
-//     _p_from(p_from)
-// {
-//     VLOG(9) << "Tensor p_from construct";
-// }
+Tensor::Tensor(
+    Operator *p_from
+):
+    _p_from(p_from)
+{
+    VLOG(9) << "Tensor p_from construct";
+}
 
 Tensor::Tensor(std::vector<size_t> shape):
     _layout(shape.size(), '?'),
@@ -473,23 +473,21 @@ std::ostream &operator<<(std::ostream &os, Tensor tensor) {
 
 
 void Tensor::test() {
-
-    float *IO = nullptr;
-    checkCudaErrors(cudaMalloc(&IO, 16));
-    float IO_h[4] = {1, 1, 2, 3};
-    checkCudaErrors(cudaMemcpy(IO, IO_h, 16, cudaMemcpyHostToDevice));
-
-    kelementwise_inplace<<<1, 4>>>(
+    float wtf[4] = {5, 5, 4, 2};
+    float *www;
+    checkCudaErrors(cudaMalloc(&www, 16));
+    checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
+    kelementwise_inplace<<<1, 32>>>(
         4,
-        IO,
+        www,
         1.f,
-        IO,
-        ELE_OP::ADD
+        www,
+        ELE_OP::MULTIPLY
     );
-
-    checkCudaErrors(cudaMemcpy(IO_h, IO, 16, cudaMemcpyDeviceToHost));
-
-    for (auto i: IO_h) std::cout << i << " ";
+    checkCudaErrors(cudaDeviceSynchronize());
+    float *back_www = new float[4];
+    checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
+    int a = 1;
 }
 
 

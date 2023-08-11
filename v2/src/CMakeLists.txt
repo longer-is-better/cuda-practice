@@ -1,4 +1,4 @@
-# add_subdirectory(graphs)
+add_subdirectory(graphs)
 add_subdirectory(kernels)
 add_subdirectory(network)
 add_subdirectory(operators)
