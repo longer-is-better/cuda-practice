@@ -4,6 +4,7 @@
 #include "tensor.h"
 
 
+#include "elementwise.cuh"
 // Network* Network::_trianer = nullptr;
 
 Network::Network(
@@ -97,4 +98,20 @@ void Network::update_weights(float alpha) {
     for (Tensor* weight_tensor: _weight_tensors) {
         weight_tensor->update_weights(alpha, _cudastream);
     }
+
+    float wtf[4] = {5, 5, 4, 2};
+    float *www;
+    checkCudaErrors(cudaMalloc(&www, 16));
+    checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
+    kelementwise_inplace<<<1, 32>>>(
+        4,
+        www,
+        1.f,
+        www,
+        ELE_OP::MULTIPLY
+    );
+    checkCudaErrors(cudaDeviceSynchronize());
+    float *back_www = new float[4];
+    checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
+    int a = 1;
 }

@@ -51,9 +51,74 @@ class AlexNet(nn.Module):
 
 ## 问题和解决方案
 
-动态库循环依赖
+动态库循环依赖: 其中一个使用外部声明
 
 纯cpp编译依赖.cu ，没有找到优雅的解决方法，只是将所有cpp改成.cu用ncc编译了
+
+undefine vtable 虚析构函数子类未实现
+
+### lunch kerbnel失败
+
+kelementwise_inplace 在 tensor的update lunch 会输入地址内容都为0 而且不执行 kernel代码直接跳转到kernel结束，在其他文件（test，network里面lunch都正常）
+
+可以独立运行的一段代码，在tensor.cu里面调用kernel失败，其他文件里面都可以正常调用！！
+
+同一个文件，类外部的函数可以正常调用， 类的静态方法可以正常调用, 类对象调用静态方法，正常
+
+另外一个普通方法lunch正常
+
+正常：
+
+    // std::vector<Tensor*> vt;
+
+    // Tensor* a = new Tensor({1});
+
+    // vt.push_back(a);
+
+    // vt[0]->update_weights(1.f, cudaStreamDefault);
+
+异常：
+
+    Tensor* a = new Tensor({1});
+
+    ComputeGraph test_graph;
+
+    test_graph._weight_tensors.push_back(a);
+
+    test_graph._weight_tensors[0]->update_weights(1.f, cudaStreamDefault);
+
+```
+void Tensor::update_weights(float alpha, cudaStream_t cudastream) {
+ 
+        float wtf[4] = {5, 5, 4, 2};
+        float *www;
+        checkCudaErrors(cudaMalloc(&www, 16));
+        checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
+        kelementwise_inplace<<<1, 32>>>(
+            4,
+            www,
+            1.f,
+            www,
+            ELE_OP::MULTIPLY
+        );
+        checkCudaErrors(cudaDeviceSynchronize());
+        float *back_www = new float[4];
+        checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
+        int a = 1;
+```
+
+
+
+    Tensor* a = new Tensor({1});
+
+    a->update_weights(1.f, cudaStreamDefault);
+
+    ComputeGraph test_graph;  // 没有这句话，上面一句执行结果正常，加上这句话，上面一句执行结果异常。真见了鬼了
+
+
+
+
+
 
 ## diary
 

@@ -5,7 +5,7 @@
 
 #include "tensor.h"
 
-class Tensor;
+// class Tensor;
 
 class Operator {
 public:

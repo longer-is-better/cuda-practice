@@ -1,9 +1,10 @@
 find_package(CUDA REQUIRED)
 
-file(GLOB srcs ${CMAKE_CURRENT_SOURCE_DIR}/*.c*)
+file(GLOB srcs ${CMAKE_CURRENT_SOURCE_DIR}/compute_graph.cu)
 add_library(network SHARED ${srcs})
 target_link_libraries(
     network
+    tensor
     operators
     ${glog_LIBRARIES}
 )

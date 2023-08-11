@@ -11,6 +11,7 @@
 
 #include "tensor.h"
 #include "kelementwise.cuh"
+#include "kmap.cuh"
 #include "kothers.cuh"
 
 
@@ -22,13 +23,13 @@ Tensor::Tensor(){
 }
 
 
-Tensor::Tensor(
-    Operator *p_from
-):
-    _p_from(p_from)
-{
-    VLOG(9) << "Tensor p_from construct";
-}
+// Tensor::Tensor(
+//     Operator *p_from
+// ):
+//     _p_from(p_from)
+// {
+//     VLOG(9) << "Tensor p_from construct";
+// }
 
 Tensor::Tensor(std::vector<size_t> shape):
     _layout(shape.size(), '?'),
@@ -353,19 +354,20 @@ void Tensor::fill_data_random(float lower_bound, float upper_bound){
     LOG(INFO) << "random fill tensor[" << _name << "] data.";
 }
 
-void Tensor::mirror(
-    const std::map<Tensor *, Tensor *> &tensor_map,
-    const std::map<Operator *, Operator *> &operator_map
-) {
-    if (_p_from) tensor_map.at(this)->_p_from = operator_map.at(_p_from);
-    for (Operator *op: _to) {
-        tensor_map.at(this)->_to.push_back(operator_map.at(op));
-    }
-}
+// void Tensor::mirror(
+//     const std::map<Tensor *, Tensor *> &tensor_map,
+//     const std::map<Operator *, Operator *> &operator_map
+// ) {
+//     if (_p_from) tensor_map.at(this)->_p_from = operator_map.at(_p_from);
+//     for (Operator *op: _to) {
+//         tensor_map.at(this)->_to.push_back(operator_map.at(op));
+//     }
+// }
 
 void Tensor::update_weights(float alpha, cudaStream_t cudastream) {
-    CHECK_NOTNULL(_p_data);
-    CHECK_NOTNULL(_p_gradient);
+    // CHECK_NOTNULL(_p_data);
+    // CHECK_NOTNULL(_p_gradient);
+
     // Tensor s({2, 2});
     // s = *this;
     // std::cout << "data before:\n" << s << std::endl;
@@ -373,34 +375,52 @@ void Tensor::update_weights(float alpha, cudaStream_t cudastream) {
     // s._p_data = s._p_gradient;
     // s._p_gradient = nullptr;
     // std::cout << "grad before:\n" << s << std::endl;
-    if (_data_memorytype == cudaMemoryTypeDevice) {
+    // if (_data_memorytype == cudaMemoryTypeDevice) {
         dim3 BLOCK(32);
         dim3 GRID((_element_count + BLOCK.x - 1) / BLOCK.x);
+        // kelementwise_inplace<<<GRID, BLOCK, 0, cudastream>>>(
+        //     _element_count,
+        //     _p_data,
+        //     alpha,
+        //     _p_gradient,
+        //     ELE_OP::SUB
+        // );
+    
         float wtf[4] = {5, 5, 4, 2};
         float *www;
         checkCudaErrors(cudaMalloc(&www, 16));
         checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
-        kelementwise_inplace<<<GRID, BLOCK, 0, cudastream>>>(
-            _element_count,
+        kelementwise_inplace<<<1, 32>>>(
+            4,
             www,
-            alpha,
-            _p_gradient,
-            ELE_OP::SUB
+            1.f,
+            www,
+            ELE_OP::MULTIPLY
         );
         checkCudaErrors(cudaDeviceSynchronize());
-
         float *back_www = new float[4];
         checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
         int a = 1;
+
+    
+        // kmap<<<1, 32>>>(
+        //     _element_count,
+        //     _p_data,
+        //     _p_gradient,
+        //     MAP_OP::ADD,
+        //     1.f
+        // );
+        // checkCudaErrors(cudaDeviceSynchronize());
+
         // s = *this;
         // std::cout << "data after:\n" << s << std::endl;
         // free(s._p_data);
         // s._p_data = s._p_gradient;
         // s._p_gradient = nullptr;
         // std::cout << "grad after:\n" << s << std::endl;
-    } else {
-        LOG(FATAL) << "not implement";
-    }
+    // } else {
+    //     LOG(FATAL) << "not implement";
+    // }
 
 }
 
@@ -470,4 +490,65 @@ void Tensor::test() {
     checkCudaErrors(cudaMemcpy(IO_h, IO, 16, cudaMemcpyDeviceToHost));
 
     for (auto i: IO_h) std::cout << i << " ";
+}
+
+
+
+void WTF(){
+
+    float wtf[4] = {5, 5, 4, 2};
+    float *www;
+    checkCudaErrors(cudaMalloc(&www, 16));
+    checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
+    kelementwise_inplace<<<1, 32>>>(
+        4,
+        www,
+        1.f,
+        www,
+        ELE_OP::MULTIPLY
+    );
+    checkCudaErrors(cudaDeviceSynchronize());
+    float *back_www = new float[4];
+    checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
+    int a = 1;
+}
+
+
+void Tensor::WTF(){
+
+    float wtf[4] = {5, 5, 4, 2};
+    float *www;
+    checkCudaErrors(cudaMalloc(&www, 16));
+    checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
+    kelementwise_inplace<<<1, 32>>>(
+        4,
+        www,
+        1.f,
+        www,
+        ELE_OP::MULTIPLY
+    );
+    checkCudaErrors(cudaDeviceSynchronize());
+    float *back_www = new float[4];
+    checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
+    int a = 1;
+}
+
+
+void Tensor::WTF_obj(){
+
+    float wtf[4] = {5, 5, 4, 2};
+    float *www;
+    checkCudaErrors(cudaMalloc(&www, 16));
+    checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
+    kelementwise_inplace<<<1, 32>>>(
+        4,
+        www,
+        1.f,
+        www,
+        ELE_OP::MULTIPLY
+    );
+    checkCudaErrors(cudaDeviceSynchronize());
+    float *back_www = new float[4];
+    checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
+    int a = 1;
 }
