@@ -50,10 +50,10 @@ void ComputeGraph::copy(
 
     for (Operator* op: this->get_op_seq()) {
         // operator_map_on[op] = op->copy();
-        for (Tensor* output_tensor: op->_output_tensors) {
-            Tensor* copyed_tensor = new Tensor(*output_tensor);
-            tensor_map_on[output_tensor] = copyed_tensor;
-        }
+        // for (Tensor* output_tensor: op->_output_tensors) {
+        //     Tensor* copyed_tensor = new Tensor(*output_tensor);
+        //     tensor_map_on[output_tensor] = copyed_tensor;
+        // }
     }
 
     for (std::pair<Tensor*, Tensor*> p: tensor_map_on) {
@@ -61,18 +61,18 @@ void ComputeGraph::copy(
     }
 
     for (std::pair<Operator*, Operator*> p: operator_map_on) {
-        p.first->mirror(tensor_map_on, operator_map_on);
+        // p.first->mirror(tensor_map_on, operator_map_on);
     }
 }
 
 std::vector<Tensor*> ComputeGraph::get_output_tensors() {
     if (_output_tensors.empty()) {
         for (Operator* op: get_op_seq()) {
-            for (Tensor* tensor: op->_output_tensors) {
-                if (tensor->_to.empty()) {
-                    _output_tensors.push_back(tensor);
-                }
-            }
+            // for (Tensor* tensor: op->_output_tensors) {
+            //     if (tensor->_to.empty()) {
+            //         _output_tensors.push_back(tensor);
+            //     }
+            // }
         }
     }
     return _output_tensors;

@@ -32,9 +32,9 @@ void Network::to(cudaMemoryType type){
     }
 
     for (Operator* op: this->get_op_seq()) {
-        for (Tensor* output_tensor: op->_output_tensors) {
-            output_tensor->to(type);
-        }
+        // for (Tensor* output_tensor: op->_output_tensors) {
+        //     output_tensor->to(type);
+        // }
     }
 }
 
@@ -52,10 +52,10 @@ void Network::init(std::vector<Tensor*> sample_inputs, std::string weight_path) 
     }
     for (Operator *op: get_op_seq()) {
         // op->infer_shape();
-        for (Tensor *tensor: op->_output_tensors) {
-            tensor->malloc_data();
-            if (_train) tensor->malloc_gradient();
-        }
+        // for (Tensor *tensor: op->_output_tensors) {
+        //     tensor->malloc_data();
+        //     if (_train) tensor->malloc_gradient();
+        // }
     }
 }
 
