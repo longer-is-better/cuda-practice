@@ -15,23 +15,11 @@ Network::Network(
     _cudastream(cudastream),
     _train(train)
 {
-    // if (train) {
-        // if (_trianer) {
-        //     LOG(FATAL) << "train is singleton";
-        //     delete this;
-        //     return;
-        // } else {
-            // computegraph->copy(_input_tensors, _weight_tensors);
-            // _trianer = this;
-        // }
-    // } else {
-        computegraph->copy(_input_tensors, _weight_tensors);
-    // }
+    computegraph->copy(_input_tensors, _weight_tensors);
 }
 
 Network::~Network()
 {
-    // if (_trianer = this) _trianer = nullptr;
 }
 
 
