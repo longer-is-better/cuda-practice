@@ -47,7 +47,7 @@ TEST(WTF, WTF){
     ComputeGraph test_graph;
     test_graph._weight_tensors.push_back(new Tensor({2, 2}));
     test_graph._weight_tensors[0]->update_weights(1.f, cudaStreamDefault);
-    new ElementWise(); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // new ElementWise(); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 }
 
 TEST(network, smoke) {
