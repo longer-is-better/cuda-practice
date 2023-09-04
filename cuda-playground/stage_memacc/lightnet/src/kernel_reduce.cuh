@@ -94,15 +94,15 @@ __global__ void kreduce_dbbf(size_t total_n, T *I, T *O, REDUCE_OP op) {
 }
 
 
-template <typename T>
-__global__ void kreduce_realdbbf(size_t total_n, T *I, T *O, REDUCE_OP op) {
+// template <typename float>
+__global__ void kreduce_realdbbf(size_t total_n, float *I, float *O, REDUCE_OP op) {
     auto grid = cooperative_groups::this_grid();
     auto block = cooperative_groups::this_thread_block();
     assert(total_n % grid.size() == 0); // Assume input size fits batch_sz * grid_size
 
     constexpr size_t stages_count = 2; // Pipeline with two stages
     // Two batches must fit in shared memory:
-    extern __shared__ T double_partial[];
+    extern __shared__ float double_partial[];
     double_partial[2 * block.size()] = 0.f;
     size_t offset[stages_count] = { 0, block.size() }; // Offsets to each batch
 
@@ -124,7 +124,7 @@ __global__ void kreduce_realdbbf(size_t total_n, T *I, T *O, REDUCE_OP op) {
             block,
             double_partial + offset[stage_index],
             I + block_batch(batch),
-            sizeof(T) * block.size(),
+            sizeof(float) * block.size(),
             pipeline
         );
         pipeline.producer_commit();
@@ -140,7 +140,7 @@ __global__ void kreduce_realdbbf(size_t total_n, T *I, T *O, REDUCE_OP op) {
                 block,
                 double_partial + offset[next_stage_index],
                 I + block_batch(next_batch),
-                sizeof(T) * block.size(),
+                sizeof(float) * block.size(),
                 pipeline
             );
             pipeline.producer_commit();
@@ -148,7 +148,7 @@ __global__ void kreduce_realdbbf(size_t total_n, T *I, T *O, REDUCE_OP op) {
 
         // reduce current batch
         pipeline.consumer_wait();
-        T *partial = double_partial + offset[stage_index];
+        float *partial = double_partial + offset[stage_index];
         for (int s = block.size() / 2; s > 16; s >>= 1) {
             if (threadIdx.x < s) {
                 partial[threadIdx.x] += partial[threadIdx.x + s];
