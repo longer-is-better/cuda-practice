@@ -7,13 +7,8 @@
 
 #include <glog/logging.h>
 
-#include "cuda_tools.cuh"
 
-#include "tensor.h"
-#include "kelementwise.cuh"
-#include "kmap.cuh"
-#include "kothers.cuh"
-
+#include "tensor.cuh"
 
 std::vector<size_t> Tensor::show_elements = {4, 4, 3, 1};
 
@@ -31,7 +26,8 @@ Tensor::Tensor(
     VLOG(9) << "Tensor p_from construct";
 }
 
-Tensor::Tensor(std::vector<size_t> shape):
+Tensor::Tensor(std::vector<size_t> shape, cudaMemoryType memtype, float *data):
+    _data_memorytype(memtype),
     _layout(shape.size(), '?'),
     _dim_n(shape.size()),
     _shape(shape),
@@ -47,7 +43,14 @@ Tensor::Tensor(std::vector<size_t> shape):
     }
     _total_size = _element_count * sizeof(float);
 
-    CHECK_NOTNULL(_p_data = (float*)malloc(_total_size));
+    if (memtype == cudaMemoryTypeHost) {
+        CHECK_NOTNULL(_p_data = (float*)malloc(_total_size));
+        CHECK_NOTNULL(_p_gradient = (float*)malloc(_total_size));
+        if (data) memcpy(_p_data, data, _total_size);
+    } else if (memtype == cudaMemoryTypeDevice) {
+    } else {
+        LOG(FATAL) << "impossible";
+    }
     VLOG(9) << "Tensor shape construct";
 }
 
@@ -88,8 +91,6 @@ Tensor::Tensor(
             CHECK_NOTNULL(_p_data = (float*)malloc(_total_size));
             memcpy(_p_data, tensor._p_data, _total_size);
         } else if (_data_memorytype == cudaMemoryTypeDevice) {
-            checkCudaErrors(cudaMalloc((void**)&_p_data, _total_size));
-            checkCudaErrors(cudaMemcpy(_p_data, tensor._p_data, _total_size, cudaMemcpyHostToDevice));
         } else {
             LOG(FATAL) << "not implement.";
         }
@@ -100,8 +101,6 @@ Tensor::Tensor(
             CHECK_NOTNULL(_p_gradient = (float*)malloc(_total_size));
             memcpy(_p_gradient, tensor._p_gradient, _total_size);
         } else if (_data_memorytype == cudaMemoryTypeDevice) {
-            checkCudaErrors(cudaMalloc((void**)&_p_gradient, _total_size));
-            checkCudaErrors(cudaMemcpy(_p_gradient, tensor._p_gradient, _total_size, cudaMemcpyHostToDevice));
         } else {
             LOG(FATAL) << "not implement.";
         }
@@ -145,8 +144,6 @@ Tensor& Tensor::operator=(const Tensor &tensor) {
                 }
                 break;
             case cudaMemoryTypeDevice:
-                if (tensor._p_data) checkCudaErrors(cudaMalloc(&_p_data, _total_size));
-                if (tensor._p_gradient) checkCudaErrors(cudaMalloc(&_p_gradient, _total_size));
                 switch (tensor._data_memorytype) {
                     case cudaMemoryTypeHost:
                         direct = cudaMemcpyHostToDevice; break;
@@ -161,8 +158,6 @@ Tensor& Tensor::operator=(const Tensor &tensor) {
             default:
                 break;
         }
-        if (tensor._p_data) checkCudaErrors(cudaMemcpy(_p_data, tensor._p_data, _total_size, direct));
-        if (tensor._p_gradient)checkCudaErrors(cudaMemcpy(_p_gradient, tensor._p_gradient, _total_size, direct));
     }
     return *this;
 }
@@ -230,8 +225,6 @@ Tensor::~Tensor(){
             free(_p_data); _p_data = nullptr;
             free(_p_gradient); _p_gradient = nullptr;
         } else if (_data_memorytype == cudaMemoryTypeDevice) {
-            checkCudaErrors(cudaFree(_p_data)); _p_data = nullptr;
-            checkCudaErrors(cudaFree(_p_gradient)); _p_gradient = nullptr;
         } else {
             LOG(FATAL) << "not implement.";
         }
@@ -246,47 +239,54 @@ Tensor::~Tensor(){
 }
 
 
-Tensor Tensor::operator[](int i) {
+Tensor &Tensor::operator[](int i) {
     CHECK_NOTNULL(_p_data);
     CHECK_GE(_dim_n, 1);
-    Tensor ans;
-    ans._data_memorytype = _data_memorytype;
-    ans._name = _name + "[" + std::to_string(i) + "]";
-    ans._dim_n = _dim_n - 1;
-    ans._layout = _layout.substr(1);
-    ans._shape = std::vector<size_t>(_shape.begin() + 1, _shape.end());
-    ans._stride = std::vector<size_t>(_stride.begin() + 1, _stride.end());
-    ans._element_count = _stride[0];
-    ans._total_size = ans._element_count * sizeof(float);
+    Tensor *ans = new Tensor();
+    ans->_data_memorytype = _data_memorytype;
+    ans->_name = _name + "[" + std::to_string(i) + "]";
+    ans->_dim_n = _dim_n - 1;
+    ans->_layout = _layout.substr(1);
+    ans->_shape = std::vector<size_t>(_shape.begin() + 1, _shape.end());
+    ans->_stride = std::vector<size_t>(_stride.begin() + 1, _stride.end());
+    ans->_element_count = _stride[0];
+    ans->_total_size = ans->_element_count * sizeof(float);
 
     CHECK_NOTNULL(_p_data);
-    ans._p_data = _p_data + _stride[0] * i;
-    // CHECK_NOTNULL(_p_gradient);
-    // ans._p_gradient = _p_gradient + _stride[0] * i;
+    ans->_p_data = _p_data + _stride[0] * i;
+    CHECK_NOTNULL(_p_gradient);
+    ans->_p_gradient = _p_gradient + _stride[0] * i;
 
-    _shadows.insert(&ans);
-    ans._shadow_of = this;
+    _shadows.insert(ans);
+    ans->_shadow_of = this;
+    return *ans;
+}
+
+// Tensor &Tensor::operator==(const Tensor &tensor) const {
+    // TODO: insert return statement here
+// }
+
+Tensor Tensor::grad() {
+    Tensor ans(*this);
+    if (_data_memorytype == cudaMemoryTypeHost) {
+        memcpy(ans._p_data, ans._p_gradient, _total_size);
+    } else if (_data_memorytype == cudaMemoryTypeDevice) {
+    } else {
+        LOG(FATAL) << "no";
+    }
     return ans;
 }
 
-
-void Tensor::malloc_data() {
-    CHECK_EQ(_p_data, static_cast<float*>(nullptr)) << "data already malloced";
+void Tensor::alloc_memory() {
     if (_data_memorytype == cudaMemoryTypeHost) {
+        free(_p_data);
+        free(_p_gradient);
         CHECK_NOTNULL(_p_data = (float*)malloc(_total_size));
-    } else if (_data_memorytype == cudaMemoryTypeDevice) {
-        checkCudaErrors(cudaMalloc(&_p_data, _total_size));
-    } else {
-        LOG(FATAL) << "not implement.";
-    }
-}
-
-void Tensor::malloc_gradient() {
-    CHECK_EQ(_p_gradient, static_cast<float*>(nullptr)) << "gradient already malloced";
-    if (_data_memorytype == cudaMemoryTypeHost) {
         CHECK_NOTNULL(_p_gradient = (float*)malloc(_total_size));
+        for (int i = 0; i < _element_count; i++) _p_gradient[i] = 1.f;
     } else if (_data_memorytype == cudaMemoryTypeDevice) {
-        checkCudaErrors(cudaMalloc(&_p_gradient, _total_size));
+        dim3 BLOCK(_element_count < 1024 ? _element_count : 1024);
+
     } else {
         LOG(FATAL) << "not implement.";
     }
@@ -298,8 +298,6 @@ void Tensor::to(cudaMemoryType target_memorytype) {
     else if (target_memorytype == cudaMemoryTypeHost) {
         if (_p_data) {
             CHECK_NOTNULL(tmp = (float*)malloc(_total_size));
-            checkCudaErrors(cudaMemcpy(tmp, _p_data, _total_size, cudaMemcpyDeviceToHost));
-            checkCudaErrors(cudaFree(_p_data));
             _p_data = tmp;
             if (_shadow_of) _shadow_of->_shadows.erase(this);
             for (Tensor* shadow: _shadows) {
@@ -308,32 +306,26 @@ void Tensor::to(cudaMemoryType target_memorytype) {
             }
             _shadow_of = nullptr;
         } else {
-            LOG(INFO) << "move tensor with pullptr _p_data";
+            VLOG(9) << "move tensor with pullptr _p_data";
         }
         if (_p_gradient) {
             CHECK_NOTNULL(tmp = (float*)malloc(_total_size));
-            checkCudaErrors(cudaMemcpy(tmp, _p_gradient, _total_size, cudaMemcpyDeviceToHost));
-            checkCudaErrors(cudaFree(_p_gradient));
             _p_gradient = tmp;
         } else {
-            LOG(INFO) << "move tensor with pullptr _p_gradient";
+            VLOG(9) << "move tensor with pullptr _p_gradient";
         }
     } else if (target_memorytype == cudaMemoryTypeDevice) {
         if (_p_data) {
-            checkCudaErrors(cudaMalloc(&tmp, _total_size));
-            checkCudaErrors(cudaMemcpy(tmp, _p_data, _total_size, cudaMemcpyHostToDevice));
             free(_p_data);
             _p_data = tmp;
         } else {
-            LOG(INFO) << "move tensor with pullptr _p_data";
+            VLOG(9) << "move tensor with pullptr _p_data";
         }
         if (_p_gradient) {
-            checkCudaErrors(cudaMalloc(&tmp, _total_size));
-            checkCudaErrors(cudaMemcpy(tmp, _p_gradient, _total_size, cudaMemcpyHostToDevice));
             free(_p_gradient);
             _p_gradient = tmp;
         } else {
-            LOG(INFO) << "move tensor with pullptr _p_gradient";
+            VLOG(9) << "move tensor with pullptr _p_gradient";
         }
     }
     _data_memorytype = target_memorytype;
@@ -347,11 +339,10 @@ void Tensor::fill_data_random(float lower_bound, float upper_bound){
         std::uniform_real_distribution<float> dis(lower_bound, upper_bound);
         for (int i = 0; i < _element_count; i++) _p_data[i] = dis(gen);
     } else if (_data_memorytype == cudaMemoryTypeDevice) {
-        kinitializeRandom<<<(_element_count + 511) / 512, 512>>>(_p_data, _total_size, lower_bound, upper_bound);
     } else {
         LOG(FATAL) << "not implement.";
     }
-    LOG(INFO) << "random fill tensor[" << _name << "] data.";
+    VLOG(9) << "random fill tensor[" << _name << "] data.";
 }
 
 void Tensor::mirror(
@@ -365,188 +356,75 @@ void Tensor::mirror(
 }
 
 void Tensor::update_weights(float alpha, cudaStream_t cudastream) {
-    // CHECK_NOTNULL(_p_data);
-    // CHECK_NOTNULL(_p_gradient);
+    CHECK_NOTNULL(_p_data);
+    CHECK_NOTNULL(_p_gradient);
 
-    // Tensor s({2, 2});
-    // s = *this;
-    // std::cout << "data before:\n" << s << std::endl;
-    // free(s._p_data);
-    // s._p_data = s._p_gradient;
-    // s._p_gradient = nullptr;
-    // std::cout << "grad before:\n" << s << std::endl;
-    // if (_data_memorytype == cudaMemoryTypeDevice) {
+    if (_data_memorytype == cudaMemoryTypeDevice) {
         dim3 BLOCK(32);
         dim3 GRID((_element_count + BLOCK.x - 1) / BLOCK.x);
-        // kelementwise_inplace<<<GRID, BLOCK, 0, cudastream>>>(
-        //     _element_count,
-        //     _p_data,
-        //     alpha,
-        //     _p_gradient,
-        //     ELE_OP::SUB
-        // );
-    
-        float wtf[4] = {5, 5, 4, 2};
-        float *www;
-        checkCudaErrors(cudaMalloc(&www, 16));
-        checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
-        kelementwise_inplace<<<1, 32>>>(
-            4,
-            www,
-            1.f,
-            www,
-            ELE_OP::MULTIPLY
-        );
-        checkCudaErrors(cudaDeviceSynchronize());
-        float *back_www = new float[4];
-        checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
-        int a = 1;
 
-    
-        // kmap<<<1, 32>>>(
-        //     _element_count,
-        //     _p_data,
-        //     _p_gradient,
-        //     MAP_OP::ADD,
-        //     1.f
-        // );
-        // checkCudaErrors(cudaDeviceSynchronize());
-
-        // s = *this;
-        // std::cout << "data after:\n" << s << std::endl;
-        // free(s._p_data);
-        // s._p_data = s._p_gradient;
-        // s._p_gradient = nullptr;
-        // std::cout << "grad after:\n" << s << std::endl;
-    // } else {
-    //     LOG(FATAL) << "not implement";
-    // }
+    } else {
+        LOG(FATAL) << "not implement";
+    }
 
 }
 
 
-std::ostream &operator<<(std::ostream &os, Tensor tensor) {
-    CHECK_EQ(tensor._data_memorytype, cudaMemoryTypeHost);
-    if ( tensor._p_data == nullptr ) {
-        os << "tensor " << tensor._name << " empty"<< std::endl;
+std::ostream &operator<<(std::ostream &os, Tensor &tensor) {
+    if (tensor._data_memorytype != cudaMemoryTypeHost) {
+        Tensor show;
+        show = tensor;
+        os << "[device] " << show;
+        return os;
+    } else {
+        CHECK_EQ(tensor._data_memorytype, cudaMemoryTypeHost);
+        if ( tensor._p_data == nullptr ) {
+            os << "tensor " << tensor._name << " empty"<< std::endl;
+            return os;
+        }
+
+        if (tensor._dim_n > 2) {
+            for (int i = 0; ; i++) {
+                if (i >= tensor.show_elements[tensor._dim_n - 1]) {
+                    for (int i = 0; i < tensor._dim_n; i++) {
+                        for (int i = 0; i < tensor._dim_n; i++) os << "-";
+                        for (int i = 0; i < tensor._dim_n; i++) os << " ";
+                    }
+                    break;
+                } else if (i >= tensor._shape[0]) {
+                    break;
+                } else {
+                    os << tensor[i];
+                }
+            }
+            os << std::endl;
+        } else if (tensor._dim_n == 2) {
+            os << "Tensor " << tensor._name << std::endl;
+            for (int i = 0; ; i++) {
+                if (i >= tensor.show_elements[tensor._dim_n - 1]) {
+                    os << ".\n.\n.\n";
+                    break;
+                } else if (i >= tensor._shape[0]) {
+                    break;
+                } else {
+                    os << tensor[i];
+                }
+            }
+        } else if (tensor._dim_n == 1) {
+            for (int i = 0; ; i++) {
+                if (i >= tensor.show_elements[tensor._dim_n - 1]) {
+                    os << "...";
+                    break;
+                } else if (i >= tensor._shape[0]) {
+                    break;
+                } else {
+                    os << tensor._p_data[i] << " ";
+                }
+            }
+            os << std::endl;
+        } else {
+            os << "scalar: " << tensor._p_data[0] << std::endl;
+        }
         return os;
     }
-
-    if (tensor._dim_n > 2) {
-        for (int i = 0; i < tensor.show_elements[tensor._dim_n - 1]; i++) {
-            os << tensor[i];
-        }
-        for (int i = 0; i < tensor._dim_n; i++) {
-            for (int i = 0; i < tensor._dim_n; i++) os << "-";
-            for (int i = 0; i < tensor._dim_n; i++) os << " ";
-        }
-        os << std::endl;
-    } else if (tensor._dim_n == 2) {
-        os << "Tensor " << tensor._name << std::endl;
-        for (int i = 0; ; i++) {
-            if (i >= tensor.show_elements[tensor._dim_n - 1]) {
-                os << ".\n.\n.\n";
-                break;
-            } else if (i >= tensor._shape[0]) {
-                break;
-            } else {
-                os << tensor[i];
-            }
-        }
-    } else if (tensor._dim_n == 1) {
-        for (int i = 0; ; i++) {
-            if (i >= tensor.show_elements[tensor._dim_n - 1]) {
-                os << "...";
-                break;
-            } else if (i >= tensor._shape[0]) {
-                break;
-            } else {
-                os << tensor._p_data[i] << " ";
-            }
-        }
-        os <<std::endl;
-    } else {
-        os << "scalar: " << tensor._p_data[0] << std::endl;
-    }
-    return os;
-}
-
-
-void Tensor::test() {
-    float wtf[4] = {5, 5, 4, 2};
-    float *www;
-    checkCudaErrors(cudaMalloc(&www, 16));
-    checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
-    kelementwise_inplace<<<1, 32>>>(
-        4,
-        www,
-        1.f,
-        www,
-        ELE_OP::MULTIPLY
-    );
-    checkCudaErrors(cudaDeviceSynchronize());
-    float *back_www = new float[4];
-    checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
-    int a = 1;
-}
-
-
-
-void WTF(){
-
-    float wtf[4] = {5, 5, 4, 2};
-    float *www;
-    checkCudaErrors(cudaMalloc(&www, 16));
-    checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
-    kelementwise_inplace<<<1, 32>>>(
-        4,
-        www,
-        1.f,
-        www,
-        ELE_OP::MULTIPLY
-    );
-    checkCudaErrors(cudaDeviceSynchronize());
-    float *back_www = new float[4];
-    checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
-    int a = 1;
-}
-
-
-void Tensor::WTF(){
-
-    float wtf[4] = {5, 5, 4, 2};
-    float *www;
-    checkCudaErrors(cudaMalloc(&www, 16));
-    checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
-    kelementwise_inplace<<<1, 32>>>(
-        4,
-        www,
-        1.f,
-        www,
-        ELE_OP::MULTIPLY
-    );
-    checkCudaErrors(cudaDeviceSynchronize());
-    float *back_www = new float[4];
-    checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
-    int a = 1;
-}
-
-
-void Tensor::WTF_obj(){
-
-    float wtf[4] = {5, 5, 4, 2};
-    float *www;
-    checkCudaErrors(cudaMalloc(&www, 16));
-    checkCudaErrors(cudaMemcpy(www, wtf, 16, cudaMemcpyHostToDevice));
-    kelementwise_inplace<<<1, 32>>>(
-        4,
-        www,
-        1.f,
-        www,
-        ELE_OP::MULTIPLY
-    );
-    checkCudaErrors(cudaDeviceSynchronize());
-    float *back_www = new float[4];
-    checkCudaErrors(cudaMemcpy(back_www, www, 16, cudaMemcpyDeviceToHost));
-    int a = 1;
 }

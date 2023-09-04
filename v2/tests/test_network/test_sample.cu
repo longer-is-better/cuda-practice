@@ -1,15 +1,15 @@
 #include <random>
 #include <gtest/gtest.h>
 
-#include "compute_graph.h"
-#include "network.h"
+#include "compute_graph.cuh"
+#include "network.cuh"
 
 // #include "l1loss_graph.cuh"
 // #include "operators.h"
 
-#include "elementwise.cuh"
+#include "operator_elementwise.cuh"
 
-#include "cuda_tools.cuh"
+#include "tools_cuda.cuh"
 
 
 

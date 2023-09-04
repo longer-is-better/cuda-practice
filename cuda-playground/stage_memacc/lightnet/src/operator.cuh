@@ -3,14 +3,13 @@
 #include <map>
 #include <utility>
 
-#include "tensor.h"
-
-// class Tensor;
+#include "tensor.cuh"
 
 class Operator {
 public:
     std::string _name;
-    cudaStream_t _cudastream;
+    bool _end_of_graph = false;
+    cudaStream_t _cudastream = cudaStreamDefault;
 
     std::map<Operator*, bool> _prevoperators = {};  // bool: exist for topologicalSort
     std::map<Operator*, bool> _nextoperators = {};  // bool: exist
@@ -19,6 +18,9 @@ public:
 
 
     Operator(){};
+    Operator(bool end_of_graph): _end_of_graph(end_of_graph){
+        ;
+    };
     Operator(
         std::vector<Tensor*> input_tensors,
         std::vector<Tensor*> output_tensors
@@ -33,10 +35,11 @@ public:
     virtual void mirror(const std::map<Tensor*, Tensor*>& tensor_map, const std::map<Operator*, Operator*>& operator_map);
     virtual int indegree();
     virtual void set_cudastream(cudaStream_t cudastream);
-    // virtual Operator* copy() = 0;
-    // virtual void infer_shape() = 0;
-    // virtual void forward() = 0;
-    // virtual void backward() = 0;
+    virtual std::string type_str() = 0;
+    virtual Operator* copy() = 0;
+    virtual void infer_shape() = 0;
+    virtual void forward() = 0;
+    virtual void backward() = 0;
 
 
 

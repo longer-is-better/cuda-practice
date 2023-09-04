@@ -7,7 +7,7 @@
 #include <gflags/gflags.h>
 
 
-#include "tensor.h"
+#include "tensor.cuh"
 
 DEFINE_int32(my_param, 0, "Description of my_param");
 

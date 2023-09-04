@@ -2,24 +2,24 @@
 
 #include "operator.cuh"
 
-// Operator::Operator(
-//     std::vector<Tensor*> input_tensors,
-//     std::vector<Tensor*> output_tensors
-// ):
-//     _input_tensors(input_tensors),
-//     _output_tensors(output_tensors)
-// {
-//     for (Tensor*t: _input_tensors) {
-//         t->_to.push_back(this);
-//         if (t->_p_from) {
-//             t->_p_from->_nextoperators[this] = true;
-//             _prevoperators[t->_p_from] = true;
-//         }
-//     }
-//     for (Tensor*t: _output_tensors) {
-//         t->_p_from = this;
-//     }
-// }
+Operator::Operator(
+    std::vector<Tensor*> input_tensors,
+    std::vector<Tensor*> output_tensors
+):
+    _input_tensors(input_tensors),
+    _output_tensors(output_tensors)
+{
+    for (Tensor*t: _input_tensors) {
+        t->_to.push_back(this);
+        if (t->_p_from) {
+            t->_p_from->_nextoperators[this] = true;
+            _prevoperators[t->_p_from] = true;
+        }
+    }
+    for (Tensor*t: _output_tensors) {
+        t->_p_from = this;
+    }
+}
 
 Operator::Operator(const Operator& op) {
     _name = op._name;
