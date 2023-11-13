@@ -1,0 +1,5 @@
+[
+  { "count" : 148 }
+, { "name" : "/conv1/Conv", "timeMs" : 0.741759, "averageMs" : 0.00501189, "medianMs" : 0.00512, "percentage" : 48.4542 }
+, { "name" : "/conv0/Conv + /Add", "timeMs" : 0.789087, "averageMs" : 0.00533167, "medianMs" : 0.00512, "percentage" : 51.5458 }
+]
